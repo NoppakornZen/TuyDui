@@ -1,20 +1,35 @@
-# BriefDiff MVP Build Status
+# TuyDui build status
 
-The visual prototype remains the current runnable entry point (`index.html`). The next implementation layer is now in place:
+This file says what the submitted app actually does. It is not a feature list for the product vision.
 
-- `src/domain/models.ts` defines the core product entities.
-- `src/domain/scope-engine.ts` contains pure scope and baseline rules.
-- `src/services/ai-provider.ts` defines the replaceable server-side AI contract.
-- `src/services/project-store.ts` defines storage behind an adapter.
-- `supabase/migrations/001_initial.sql` defines the first production database schema and owner policies.
+The running app is the Next.js workspace at `/workspace`. The old static prototype is kept under `legacy/` for reference and is not the entry point.
 
-## Next implementation order
+## Working now
 
-1. Create a Next.js application shell and move the existing workspace UI into React components.
-2. Connect the map to `ProjectSnapshot` data and replace demo-only map persistence.
-3. Apply the Supabase migration and add authentication.
-4. Add project/team/document CRUD.
-5. Server-side PDF processing is still next. The MaxPlusAI Claude Native adapter is in place: `POST /api/ai` validates model output and records token usage in `data/ai-usage.jsonl`.
-6. Add baseline confirmation, scope decisions, approval snapshots, and audit events.
+- A text-based PDF can be uploaded and read on the server. A scanned PDF with no text layer returns an error.
+- Extracted requirements stay proposals. Each PDF requirement keeps a page number and a short quote from that page.
+- The app builds a project map from those requirements: one project node, phases, and smaller branches.
+- The map can be zoomed, panned, and dragged. Selecting a card shows its summary.
+- A later text brief or PDF is reviewed against the current map before the map changes.
+- The user must apply the review. Cancel leaves the map unchanged.
+- A request that is already covered, or too vague, does not change the map.
+- A major new system produces a client note that says the cost will increase and why. The note has no price, hours, or deadline.
+- AI output is validated on the server. One invalid response is retried once. The API key stays on the server.
+- The hosted demo is https://tuydui.vercel.app. The map and history in that demo are stored in the browser.
 
-The AI adapter intentionally throws a clear configuration error until a server-side provider is configured. No API key belongs in the browser.
+## Present but not part of the live flow
+
+- `src/domain/requirement-match.ts` can match identical requirements in code. The current change-review screen does not call it.
+- `supabase/migrations/001_initial.sql` is a schema draft. The app does not connect to Supabase.
+- `src/domain/scope-engine.ts` defines baseline rules. Confirming the baseline in the interface only sets a local flag.
+
+## Not built
+
+- Accounts and team permissions.
+- Production database storage.
+- An immutable baseline enforced by the database.
+- A public page where a client approves scope.
+- Payments or subscriptions.
+- A permanent audit log.
+- Reading scanned PDFs.
+- A measured accuracy score for the AI. No benchmark is included.

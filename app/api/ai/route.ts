@@ -4,6 +4,7 @@ import { readAIUsage, summarizeAIUsage } from '../../../src/services/ai/usage';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300;
 
 const TASKS = new Set([
   'extract_requirements',

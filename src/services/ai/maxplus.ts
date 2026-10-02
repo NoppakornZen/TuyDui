@@ -295,7 +295,7 @@ export class MaxPlusAIProvider implements AIProvider {
         system,
         messages: [{ role: 'user', content: user }],
       }),
-      signal: AbortSignal.timeout(90_000),
+      signal: AbortSignal.timeout(240_000),
     });
     const payload = await response.json().catch(() => null) as ProviderMessage | null;
     if (!response.ok || !payload) throw new AIRequestError(response.status, this.redact(payload?.error?.message));

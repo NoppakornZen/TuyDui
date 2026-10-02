@@ -6,6 +6,7 @@ import { extractPdfText } from '../../../src/services/pdf/extract-text';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300;
 
 const MAX_BYTES = 12 * 1024 * 1024;
 const root = path.join(process.cwd(), 'data', 'documents');
@@ -75,9 +76,13 @@ async function storePdf(file: File, projectId: string) {
   const version = manifest.filter((item) => item.projectId === projectId).length + 1;
   const id = `DOC-${Date.now()}`;
   const document = { id, projectId, name, version, pageCount: extracted.pages.length, uploadedAt: new Date().toISOString() };
-  await mkdir(root, { recursive: true });
-  await writeFile(path.join(root, `${id}.pdf`), Buffer.from(bytes));
-  await writeFile(path.join(root, 'manifest.json'), JSON.stringify([...manifest, document], null, 2));
+  try {
+    await mkdir(root, { recursive: true });
+    await writeFile(path.join(root, `${id}.pdf`), Buffer.from(bytes));
+    await writeFile(path.join(root, 'manifest.json'), JSON.stringify([...manifest, document], null, 2));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EROFS' && (error as NodeJS.ErrnoException).code !== 'EPERM') throw error;
+  }
   return { text: extracted.text, document: { id, name, version } };
 }
 

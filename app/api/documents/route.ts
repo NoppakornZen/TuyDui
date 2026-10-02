@@ -5,6 +5,7 @@ import { extractPdfText } from '../../../src/services/pdf/extract-text';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300;
 
 const MAX_BYTES = 12 * 1024 * 1024;
 const root = path.join(process.cwd(), 'data', 'documents');
@@ -45,10 +46,7 @@ export async function POST(request: Request) {
   const id = `DOC-${Date.now()}`;
   const uploadedAt = new Date().toISOString();
   const document: StoredDocument = { id, projectId, name, version, pageCount: extracted.pages.length, uploadedAt };
-  await mkdir(root, { recursive: true });
-  await writeFile(path.join(root, `${id}.pdf`), stored);
-  manifest.push(document);
-  await writeFile(path.join(root, 'manifest.json'), JSON.stringify(manifest, null, 2));
+  await keepLocalCopy(stored, manifest, document);
 
   try {
     const result = await createAIProvider().extractRequirements({
@@ -72,6 +70,17 @@ export async function POST(request: Request) {
       error: error instanceof Error ? error.message : 'AI request failed.',
       document,
     }, { status });
+  }
+}
+
+async function keepLocalCopy(stored: Buffer, manifest: StoredDocument[], document: StoredDocument) {
+  try {
+    await mkdir(root, { recursive: true });
+    await writeFile(path.join(root, `${document.id}.pdf`), stored);
+    manifest.push(document);
+    await writeFile(path.join(root, 'manifest.json'), JSON.stringify(manifest, null, 2));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EROFS' && (error as NodeJS.ErrnoException).code !== 'EPERM') throw error;
   }
 }
 

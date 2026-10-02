@@ -1,10 +1,21 @@
 # TuyDui
 
-TuyDui turns a client brief into a project map. A project manager uploads a PDF or pastes the brief text. The app extracts the requirements and breaks them into branches, so the work is easier to scan than a long document.
+TuyDui is a workspace for a project manager who receives a client brief and needs to see the work before agreeing to it. The app reads the brief, lists the requirements with their source pages, and arranges them as a map of branches.
 
-A hosted demo is available at [https://tuydui.vercel.app](https://tuydui.vercel.app). No installation is needed to try it.
+Try it at [https://tuydui.vercel.app](https://tuydui.vercel.app).
 
-The demo keeps the map, requirements, and history in the browser. It does not create accounts. Refreshing the page keeps that browser's saved workspace. Uploaded PDF files are read for their text and are not stored on the hosted server.
+The running app is the Next.js route at `/workspace`. Files under `legacy/` are an old static prototype and are not used. `docs/product-vision.md` is the earlier product direction, not a list of finished features. `MVP_BUILD_STATUS.md` says what this submission does today.
+
+## How a request moves
+
+1. The browser sends the PDF or pasted text to a Next.js route on the server.
+2. `unpdf` reads the text layer, one page at a time. A scanned page with no text is rejected.
+3. The server sends that text and a fixed instruction to the MaxPlusAI Claude-compatible API. The model must return one JSON object.
+4. The server checks the JSON before the browser sees it. If it is invalid, the server asks once more. It does not invent missing fields.
+5. The browser lays the returned branches out as a map and stores the workspace in `localStorage`.
+6. A later brief goes through the same check. The map changes only after the user presses **Apply to current map**.
+
+The model proposes requirements, structure, and a change classification. It does not confirm scope, choose a price, or contact the client. Requirement ids and node ids in a review must come from the input; unknown ids are dropped.
 
 ## What it does
 
@@ -14,7 +25,7 @@ The demo keeps the map, requirements, and history in the browser. It does not cr
 - Lets the user zoom, pan, and drag the map.
 - Compares a later brief with the current map before changing anything.
 - Leaves the map unchanged when the request is already covered or too vague.
-- Updates only the affected branches after the user applies a small change.
+- Updates the affected branches after the user applies the review. A whole new system can also add branches, and it includes a client note.
 - Writes a client-ready note only when the request adds a whole new system. The note says the cost will increase and why. It never includes a price, hours, or a deadline.
 
 TuyDui proposes and explains. It does not confirm scope, calculate a price, or send anything to a client.
@@ -85,7 +96,17 @@ npm start
 
 A scanned PDF with no text layer cannot be read. The app shows an error instead of guessing.
 
-The Supabase and billing variables in `.env.example` are reserved for later. This version does not use them.
+On a local machine, the original PDF is also saved under `data/documents/`. The hosted server reads the PDF in memory and does not keep that file, because its disk is read-only. The extracted requirements and the map remain in the browser.
+
+## Known limits
+
+- There are no accounts. The workspace is local to the browser.
+- The Supabase file in `supabase/migrations/` is a schema draft. This app does not connect to it.
+- Billing variables in `.env.example` are unused.
+- A scanned PDF cannot be read.
+- The app does not report an accuracy score. There is no benchmark in this repository.
+- `src/domain/requirement-match.ts` can match identical text in code, but the current review screen asks the model directly.
+- The hosted deployment needs the server-side API key and available provider credit. If that call fails, extraction and review fail with the provider error.
 
 ## Built with
 
@@ -98,4 +119,4 @@ The Supabase and billing variables in `.env.example` are reserved for later. Thi
 
 ## AI assistance
 
-Claude, through Claude Code, was used as a coding assistant for parts of the implementation, including the workspace interface, PDF extraction flow, map layout, and change-review flow. The assistant did not decide product scope or submit the project. No model was trained for this project.
+Claude, through Claude Code, was used as a coding assistant while building this repository. It helped write and revise the Next.js workspace, the PDF extraction route, the map layout, the change-review flow, and these docs. I decided what the product should and should not do, checked the behavior, and prepared the submission. No model was trained for this project.

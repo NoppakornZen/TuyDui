@@ -21,8 +21,13 @@ export interface AIUsageEvent {
 const FILE = path.join(process.cwd(), 'data', 'ai-usage.jsonl');
 
 export async function recordAIUsage(event: AIUsageEvent): Promise<void> {
-  await mkdir(path.dirname(FILE), { recursive: true });
-  await appendFile(FILE, `${JSON.stringify(event)}\n`, 'utf8');
+  try {
+    await mkdir(path.dirname(FILE), { recursive: true });
+    await appendFile(FILE, `${JSON.stringify(event)}\n`, 'utf8');
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code !== 'EROFS' && code !== 'EPERM') throw error;
+  }
 }
 
 export async function readAIUsage(): Promise<AIUsageEvent[]> {

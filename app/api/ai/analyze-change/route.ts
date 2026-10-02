@@ -3,6 +3,7 @@ import { AIRequestError, createAIProvider } from '../../../../src/services/ai/ma
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300;
 
 /** Older entry point. New callers should use POST /api/ai with task=classify_client_message. */
 export async function POST(request: Request) {

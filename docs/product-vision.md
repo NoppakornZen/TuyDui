@@ -1,3 +1,11 @@
+# Product vision
+
+This document is the original product direction. It is not a list of features in the submitted TuyDui app.
+
+The blueprint below was written before the current implementation. Where it mentions accounts, a shared database, billing, client approval, or a permanent audit history, treat those as planned work. The implemented scope is recorded in `MVP_BUILD_STATUS.md` at the repository root.
+
+---
+
 # STARTUP BLUEPRINT — VERSION 2 (LATEST LOCKED VERSION)
 
 > **Document Type:** Master Product + MVP + AI Coding Blueprint  
