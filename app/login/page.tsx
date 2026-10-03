@@ -1,24 +1,52 @@
 'use client';
 
-import { useState } from 'react';
-import { signInWithGoogle } from '../../src/lib/auth';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [mounted, setMounted] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   async function handleGoogleSignIn() {
     try {
       setLoading(true);
       setError('');
-      await signInWithGoogle();
-      router.push('/workspace');
+
+      // Dynamically import Supabase client
+      const { supabase } = await import('../../src/lib/supabase');
+
+      const { data, error: signInError } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/workspace`,
+        }
+      });
+
+      if (signInError) throw signInError;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to sign in');
       setLoading(false);
     }
+  }
+
+  if (!mounted) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #0A0D12 0%, #161D2B 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <div style={{ color: '#fff' }}>Loading...</div>
+      </div>
+    );
   }
 
   return (

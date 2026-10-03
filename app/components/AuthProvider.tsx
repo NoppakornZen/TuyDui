@@ -2,22 +2,30 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getCurrentUser, signOut } from '../../src/lib/auth';
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
+    setMounted(true);
     checkUser();
   }, []);
 
   async function checkUser() {
     try {
-      const currentUser = await getCurrentUser();
+      // Dynamically import to avoid build-time errors
+      const { supabase } = await import('../../src/lib/supabase');
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
       setUser(currentUser);
+
+      if (!currentUser && typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+        router.push('/login');
+      }
     } catch (error) {
+      console.error('Auth check failed:', error);
       // Not logged in
       if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
         router.push('/login');
@@ -29,14 +37,15 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
   async function handleSignOut() {
     try {
-      await signOut();
+      const { supabase } = await import('../../src/lib/supabase');
+      await supabase.auth.signOut();
       router.push('/login');
     } catch (error) {
       console.error('Sign out failed:', error);
     }
   }
 
-  if (loading) {
+  if (!mounted || loading) {
     return (
       <div style={{
         minHeight: '100vh',
