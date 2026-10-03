@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import './workspace.css';
+import './workspace-redesign.css';
 import './workspace-dashboard.css';
 
 type NodeKind = 'project' | 'work_area';
