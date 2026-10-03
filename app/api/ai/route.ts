@@ -1,6 +1,7 @@
 import type { Requirement, ScopeChange, SourceDocument } from '../../../src/domain/models';
 import { AIRequestError, MaxPlusAIProvider, aiStatus, createAIProvider } from '../../../src/services/ai/maxplus';
 import { readAIUsage, summarizeAIUsage } from '../../../src/services/ai/usage';
+import { requireAuth, checkRateLimit, recordUsage } from '../../../src/lib/rate-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -36,10 +37,26 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  if (limited()) return Response.json({ error: 'Too many AI requests. Wait a moment and try again.' }, { status: 429 });
+  // Check authentication
+  const auth = await requireAuth(request);
+  if (auth instanceof Response) return auth;
+  const { userId } = auth;
+
+  // Check rate limit
+  const rateLimit = await checkRateLimit(userId, 'FREE');
+  if (!rateLimit.allowed) {
+    return Response.json({
+      error: `Rate limit exceeded. Try again in ${rateLimit.resetIn} seconds.`,
+      resetIn: rateLimit.resetIn
+    }, { status: 429 });
+  }
+
   const body = await request.json().catch(() => null) as Record<string, unknown> | null;
   const task = typeof body?.task === 'string' ? body.task : '';
   if (!body || !TASKS.has(task)) return Response.json({ error: 'Unknown AI task.' }, { status: 400 });
+
+  // Record usage
+  await recordUsage(userId, task);
 
   const provider = createAIProvider();
   try {

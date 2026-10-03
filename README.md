@@ -2,9 +2,19 @@
 
 TuyDui is a workspace for a project manager who receives a client brief and needs to see the work before agreeing to it. The app reads the brief, lists the requirements with their source pages, and arranges them as a map of branches.
 
-Try it at [https://tuydui.vercel.app](https://tuydui.vercel.app).
+**🔐 Production version now requires login** – Try it at [https://tuydui.vercel.app](https://tuydui.vercel.app).
+
+⚠️ **Current Status:** Ready for beta testing with real users. **Not ready for paid launch** – missing billing system and complete legal documents. See `SETUP.md` for deployment steps.
 
 The running app is the Next.js route at `/workspace`. Files under `legacy/` are an old static prototype and are not used. `docs/product-vision.md` is the earlier product direction, not a list of finished features. `MVP_BUILD_STATUS.md` says what this submission does today.
+
+## ✨ What's New (Production-Ready Features)
+
+- ✅ **Google OAuth Login** – Users must login before using AI features
+- ✅ **Rate Limiting** – 10 AI requests/day, 5 requests/hour per user (free tier)
+- ✅ **Database Schema** – Supabase migration ready (`supabase/migrations/001_initial.sql`)
+- ✅ **Secure API Routes** – All AI endpoints protected with authentication
+- ✅ **Privacy Policy & Terms** – Draft versions in `PRIVACY.md` and `TERMS.md`
 
 ## How a request moves
 
@@ -35,6 +45,7 @@ TuyDui proposes and explains. It does not confirm scope, calculate a price, or s
 - [Node.js 20.9 or newer](https://nodejs.org/)
 - npm, which is included with Node.js
 - An API key for the configured AI provider, if you want extraction and map generation to work locally
+- **For production:** Supabase account for authentication and database
 
 The hosted demo already has the server-side AI configuration. Local extraction, map generation, and change review need the key below.
 
@@ -54,11 +65,17 @@ Copy-Item .env.example .env.local
 Open `.env.local` and set these server-side values:
 
 ```text
+# AI Provider (required)
 AI_PROVIDER=maxplus
 AI_MODEL=claude-opus-5
 MAXPLUSAI_API_KEY=your_key_here
 MAXPLUSAI_BASE_URL=https://api.maxplus-ai.cc
 MAXPLUSAI_POOL=claude-native
+
+# Supabase (optional for local dev, required for production)
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 ```
 
 The key must stay in `.env.local`. Do not put it in frontend code or commit it. `.env.example` lists the variable names only.

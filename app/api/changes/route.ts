@@ -3,6 +3,7 @@ import path from 'node:path';
 import type { Requirement } from '../../../src/domain/models';
 import { AIRequestError, createAIProvider } from '../../../src/services/ai/maxplus';
 import { extractPdfText } from '../../../src/services/pdf/extract-text';
+import { requireAuth, checkRateLimit, recordUsage } from '../../../src/lib/rate-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -12,10 +13,28 @@ const MAX_BYTES = 12 * 1024 * 1024;
 const root = path.join(process.cwd(), 'data', 'documents');
 
 export async function POST(request: Request) {
+  // Check authentication
+  const auth = await requireAuth(request);
+  if (auth instanceof Response) return auth;
+  const { userId } = auth;
+
+  // Check rate limit
+  const rateLimit = await checkRateLimit(userId, 'FREE');
+  if (!rateLimit.allowed) {
+    return Response.json({
+      error: `Rate limit exceeded. Try again in ${rateLimit.resetIn} seconds.`,
+      resetIn: rateLimit.resetIn
+    }, { status: 429 });
+  }
+
   const contentType = request.headers.get('content-type') ?? '';
   try {
     const incoming = contentType.includes('multipart/form-data') ? await fromForm(request) : await fromJson(request);
     if (!incoming.text) return Response.json({ error: 'Paste a brief or send a PDF.' }, { status: 400 });
+
+    // Record usage before AI call
+    await recordUsage(userId, 'review_change');
+
     const result = await createAIProvider().reviewChange({
       projectId: incoming.projectId,
       rawRequest: incoming.text,

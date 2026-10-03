@@ -7,3 +7,6 @@ data
 *.tsbuildinfo
 
 .vercel
+
+.env*.local
+/videos/

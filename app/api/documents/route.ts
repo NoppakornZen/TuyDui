@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { AIRequestError, createAIProvider } from '../../../src/services/ai/maxplus';
 import { extractPdfText } from '../../../src/services/pdf/extract-text';
+import { requireAuth, checkRateLimit, recordUsage } from '../../../src/lib/rate-limit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -20,6 +21,20 @@ interface StoredDocument {
 }
 
 export async function POST(request: Request) {
+  // Check authentication
+  const auth = await requireAuth(request);
+  if (auth instanceof Response) return auth;
+  const { userId } = auth;
+
+  // Check rate limit
+  const rateLimit = await checkRateLimit(userId, 'FREE');
+  if (!rateLimit.allowed) {
+    return Response.json({
+      error: `Rate limit exceeded. You can make ${rateLimit.remaining} more requests. Try again in ${rateLimit.resetIn} seconds.`,
+      resetIn: rateLimit.resetIn
+    }, { status: 429 });
+  }
+
   const form = await request.formData().catch(() => null);
   const file = form?.get('file');
   if (!(file instanceof File)) return Response.json({ error: 'A PDF file is required.' }, { status: 400 });
@@ -33,7 +48,7 @@ export async function POST(request: Request) {
   if (!isPdf(bytes)) return Response.json({ error: 'That file is not a PDF.' }, { status: 400 });
   const stored = Buffer.from(bytes);
 
-  const projectId = textField(form, 'projectId') || 'project';
+  const projectId = textField(form, 'projectId') || `project-${userId}`;
   let extracted: Awaited<ReturnType<typeof extractPdfText>>;
   try {
     extracted = await extractPdfText(bytes);
@@ -47,6 +62,9 @@ export async function POST(request: Request) {
   const uploadedAt = new Date().toISOString();
   const document: StoredDocument = { id, projectId, name, version, pageCount: extracted.pages.length, uploadedAt };
   await keepLocalCopy(stored, manifest, document);
+
+  // Record usage after successful upload
+  await recordUsage(userId, 'extract_requirements');
 
   try {
     const result = await createAIProvider().extractRequirements({
