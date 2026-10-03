@@ -38,7 +38,13 @@ export default function LoginPage() {
   if (!mounted) {
     return (
       <div style={{
-        minHeight: '100vh',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        margin: 0,
+        padding: 0,
         background: 'linear-gradient(135deg, #0A0D12 0%, #161D2B 100%)',
         display: 'flex',
         alignItems: 'center',
@@ -51,20 +57,28 @@ export default function LoginPage() {
 
   return (
     <div style={{
-      minHeight: '100vh',
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      width: '100vw',
+      height: '100vh',
+      margin: 0,
+      padding: 0,
       background: 'linear-gradient(135deg, #0A0D12 0%, #161D2B 100%)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '2rem'
+      overflow: 'hidden'
     }}>
       <div style={{
-        background: '#0F131C',
-        borderRadius: '16px',
-        padding: '3rem',
-        maxWidth: '420px',
-        width: '100%',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.4)'
+        background: 'rgba(15, 19, 28, 0.6)',
+        backdropFilter: 'blur(20px)',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        borderRadius: '24px',
+        padding: '3rem 2.5rem',
+        maxWidth: '440px',
+        width: '90%',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.5)'
       }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <h1 style={{
