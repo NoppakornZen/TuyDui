@@ -1,5 +1,5 @@
 import { getSession } from './auth';
-import { supabaseAdmin } from './supabase';
+import { supabaseAdmin } from './supabase-admin';
 
 const AI_QUOTA = {
   FREE: { requests_per_day: 10, requests_per_hour: 5 },
