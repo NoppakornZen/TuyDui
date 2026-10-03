@@ -88,6 +88,19 @@ export default function WorkspacePage() {
     window.localStorage.setItem('briefdiff-workspace-v3', JSON.stringify({ nodes, edges, zoom, pan, requirements, changes, history, baselineConfirmed, nodeNotes, projectTitle, documents }));
   }, [nodes, edges, zoom, pan, requirements, changes, history, baselineConfirmed, nodeNotes, projectTitle, documents]);
 
+  useEffect(() => {
+    const viewport = canvasRef.current;
+    if (!viewport) return;
+
+    const preventScroll = (e: WheelEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    viewport.addEventListener('wheel', preventScroll, { passive: false });
+    return () => viewport.removeEventListener('wheel', preventScroll);
+  }, []);
+
   const nodeById = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
   const mapSize = useMemo(() => ({
     width: Math.max(2400, ...nodes.map((node) => node.x + CARD_W + 240)),
