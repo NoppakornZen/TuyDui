@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { googleName, loadOwnProfile, profileInitial, profileLabel, saveOwnProfile } from '../../src/lib/profile';
+import { googleName, loadOwnProfile, profileLabel, saveOwnProfile, uploadAvatar } from '../../src/lib/profile';
+import Avatar from '../components/Avatar';
 import './profile.css';
 
 export default function ProfilePage() {
@@ -15,6 +16,8 @@ export default function ProfilePage() {
   const [email, setEmail] = useState('');
   const [nickname, setNickname] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     load();
@@ -32,6 +35,7 @@ export default function ProfilePage() {
       setEmail(user.email ?? '');
       setNickname(profile.nickname);
       setDisplayName(profile.display_name);
+      setAvatarUrl(profile.avatar_url);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'โหลดโปรไฟล์ไม่ได้');
     } finally {
@@ -46,12 +50,28 @@ export default function ProfilePage() {
       setSaving(true);
       setSaved(false);
       setError('');
-      await saveOwnProfile({ nickname, displayName });
+      await saveOwnProfile({ nickname, displayName, avatarUrl });
       setSaved(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'บันทึกไม่ได้');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function onAvatar(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    try {
+      setUploading(true);
+      setError('');
+      setAvatarUrl(await uploadAvatar(file));
+      setSaved(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'อัปโหลดรูปไม่ได้');
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -73,7 +93,11 @@ export default function ProfilePage() {
         ) : (
           <form className="profile-card" onSubmit={onSubmit}>
             <div className="profile-identity">
-              <span className="profile-mark">{profileInitial(shown)}</span>
+              <label className="profile-photo">
+                <Avatar className="profile-mark" label={shown} url={avatarUrl} />
+                <input type="file" accept="image/*" onChange={onAvatar} disabled={uploading} />
+                <span className="profile-photo-label">{uploading ? 'กำลังอัปโหลด...' : 'เปลี่ยนรูป'}</span>
+              </label>
               <div>
                 <strong>{shown || 'ยังไม่ได้ตั้งชื่อ'}</strong>
                 <small>{email}</small>

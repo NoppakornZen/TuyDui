@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import ShareModal from '../../components/ShareModal';
 import ProjectPeople from '../../components/ProjectPeople';
+import { googleName, loadOwnProfile, profileLabel } from '../../../src/lib/profile';
 import './workspace-redesign.css';
 import './workspace-dashboard.css';
 
@@ -65,6 +66,8 @@ export default function WorkspacePage() {
   const [aiError, setAiError] = useState('');
   const [briefProposals, setBriefProposals] = useState<RequirementRow[]>([]);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [ownerName, setOwnerName] = useState('');
+  const [ownerAvatar, setOwnerAvatar] = useState('');
   const canvasRef = useRef<HTMLDivElement>(null);
   const selected = nodes.find((node) => node.id === selectedId) ?? nodes[0];
   const pendingChanges = changes.filter((change) => change.decision === 'Pending');
@@ -103,13 +106,16 @@ export default function WorkspacePage() {
       setProjectTitle(project.name);
       setClientName(project.client_name);
       setBaselineConfirmed(!!project.baseline_confirmed_at);
+      const owner = await ownerIdentity(project.owner_id, user.id);
+      setOwnerName(owner.name);
+      setOwnerAvatar(owner.avatar);
 
       const storageKey = `briefdiff-project-${projectId}`;
       const saved = window.localStorage.getItem(storageKey);
       if (saved) {
         try {
           const data = JSON.parse(saved) as { nodes?: MapNode[]; edges?: Edge[]; zoom?: number; pan?: { x: number; y: number }; requirements?: Array<RequirementRow & { description?: string }>; changes?: ChangeRow[]; history?: string[]; nodeNotes?: Record<string, string>; documents?: StoredDocument[] };
-          if (data.nodes?.length) setNodes(data.nodes.map((node) => ({ ...node, requirementIds: node.requirementIds ?? [] })));
+          if (data.nodes?.length) setNodes(data.nodes.map((node) => ({ ...node, requirementIds: node.requirementIds ?? [], owner: node.kind === 'project' ? owner.name : node.owner })));
           if (data.edges) setEdges(data.edges);
           if (data.zoom) setZoom(data.zoom);
           if (data.pan) setPan(data.pan);
@@ -120,7 +126,7 @@ export default function WorkspacePage() {
           if (data.documents) setDocuments(data.documents);
         } catch { window.localStorage.removeItem(storageKey); }
       } else {
-        setNodes([{ id: 'root', title: project.name, kind: 'project', owner: 'Project team', requirements: 0, x: 640, y: 280, requirementIds: [] }]);
+        setNodes([{ id: 'root', title: project.name, kind: 'project', owner: owner.name, requirements: 0, x: 640, y: 280, requirementIds: [] }]);
       }
     } catch (err) {
       console.error('Failed to load project:', err);
@@ -456,7 +462,7 @@ export default function WorkspacePage() {
           </div>
           </>}
         </section>
-        <aside className="workspace-inspector"><div className="inspector-kicker">{selected.kind === 'project' ? 'PROJECT' : 'WORK AREA'}</div><h2>{selected.title}</h2><span className="inspector-status">{selected.impacted ? 'Impacted by open change' : selected.kind === 'project' && baselineConfirmed ? 'Baseline V1 confirmed' : 'Not confirmed'}</span>{selected.summary && <div className="inspector-section"><h3>What this covers</h3><p className="inspector-summary">{selected.summary}</p></div>}<div className="inspector-section"><h3>Owner</h3><div className="inspector-owner"><b className="node-avatar green">{selected.owner[0] || '?'}</b><span>{selected.owner}</span></div></div><div className="inspector-section"><h3>Connected requirements</h3>{linkedRequirements.length === 0 ? <div className="inspector-requirement"><strong>No requirements yet</strong><small>Read a PDF, add the proposals, then build the map.</small><button className="inline-link" onClick={() => setActiveTab('requirements')}>Open requirements →</button></div> : linkedRequirements.map((row) => <div className="inspector-requirement" key={row.id}><strong>{row.title}</strong><small>{row.source}{row.quote ? ` · "${row.quote.slice(0, 120)}"` : ''}</small></div>)}</div><div className="inspector-section"><h3>Notes</h3><textarea value={nodeNotes[selected.id] ?? ''} onChange={(event) => setNodeNotes((current) => ({ ...current, [selected.id]: event.target.value }))} placeholder="Add a note for your team..." /></div><button className="button-primary inspector-save" onClick={() => { setHistory((current) => [`Notes saved for ${selected.title} · Just now`, ...current]); window.alert('Node details saved locally.'); }}>Save node details</button>{!baselineConfirmed && <button className="baseline-action" onClick={confirmBaseline}>Confirm baseline</button>}</aside>
+        <aside className="workspace-inspector"><div className="inspector-kicker">{selected.kind === 'project' ? 'PROJECT' : 'WORK AREA'}</div><h2>{selected.title}</h2><span className="inspector-status">{selected.impacted ? 'Impacted by open change' : selected.kind === 'project' && baselineConfirmed ? 'Baseline V1 confirmed' : 'Not confirmed'}</span>{selected.summary && <div className="inspector-section"><h3>What this covers</h3><p className="inspector-summary">{selected.summary}</p></div>}<div className="inspector-section"><h3>Owner</h3><div className="inspector-owner">{selected.kind === 'project' && ownerAvatar ? <img className="node-avatar" src={ownerAvatar} alt="" /> : <b className="node-avatar green">{(selected.kind === 'project' ? ownerName : selected.owner)[0] || '?'}</b>}<span>{selected.kind === 'project' ? (ownerName || selected.owner) : selected.owner}</span></div></div><div className="inspector-section"><h3>Connected requirements</h3>{linkedRequirements.length === 0 ? <div className="inspector-requirement"><strong>No requirements yet</strong><small>Read a PDF, add the proposals, then build the map.</small><button className="inline-link" onClick={() => setActiveTab('requirements')}>Open requirements →</button></div> : linkedRequirements.map((row) => <div className="inspector-requirement" key={row.id}><strong>{row.title}</strong><small>{row.source}{row.quote ? ` · "${row.quote.slice(0, 120)}"` : ''}</small></div>)}</div><div className="inspector-section"><h3>Notes</h3><textarea value={nodeNotes[selected.id] ?? ''} onChange={(event) => setNodeNotes((current) => ({ ...current, [selected.id]: event.target.value }))} placeholder="Add a note for your team..." /></div><button className="button-primary inspector-save" onClick={() => { setHistory((current) => [`Notes saved for ${selected.title} · Just now`, ...current]); window.alert('Node details saved locally.'); }}>Save node details</button>{!baselineConfirmed && <button className="baseline-action" onClick={confirmBaseline}>Confirm baseline</button>}</aside>
       </div>
       {showShareModal && (
         <ShareModal
@@ -591,6 +597,19 @@ function layoutFromStructure(title: string, suggested: SuggestedNode[], members:
     cursor += phaseWidths[index] + GAP_X;
   });
   return { nodes, edges };
+}
+
+async function ownerIdentity(ownerId: string, currentUserId: string) {
+  if (ownerId === currentUserId) {
+    const { user, profile } = await loadOwnProfile();
+    return {
+      name: profileLabel(profile, googleName(user) || user?.email || '') || 'เจ้าของโปรเจกต์',
+      avatar: profile?.avatar_url ?? '',
+    };
+  }
+  const { loadProfiles } = await import('../../../src/lib/profile');
+  const profile = (await loadProfiles([ownerId])).get(ownerId);
+  return { name: profileLabel(profile ?? null) || 'เจ้าของโปรเจกต์', avatar: profile?.avatar_url ?? '' };
 }
 
 function placedNode(item: SuggestedNode, x: number, y: number, members: Array<{ id: string; name: string; role: string }>): MapNode {

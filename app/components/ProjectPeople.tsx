@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { loadProfiles, profileInitial, profileLabel, type Profile } from '../../src/lib/profile';
+import { loadProfiles, profileLabel, type Profile } from '../../src/lib/profile';
+import Avatar from './Avatar';
 
 type Person = {
   userId: string;
   role: 'owner' | 'editor' | 'viewer';
   label: string;
+  avatarUrl: string;
 };
 
 const ROLE_LABEL = { owner: 'เจ้าของ', editor: 'แก้ไขได้', viewer: 'ดูอย่างเดียว' };
@@ -57,9 +59,7 @@ export default function ProjectPeople({ projectId }: { projectId: string }) {
         {visible.length === 0 ? (
           <span className="people-bubble">·</span>
         ) : visible.map((person) => (
-          <span className={`people-bubble role-${person.role}`} key={person.userId}>
-            {profileInitial(person.label)}
-          </span>
+          <Avatar className={`people-bubble role-${person.role}`} key={person.userId} label={person.label} url={person.avatarUrl} />
         ))}
         {extra > 0 && <span className="people-more">+{extra}</span>}
       </button>
@@ -71,7 +71,7 @@ export default function ProjectPeople({ projectId }: { projectId: string }) {
             <p className="people-empty">ยังโหลดรายชื่อไม่ได้</p>
           ) : people.map((person) => (
             <div className="people-row" key={person.userId}>
-              <span className={`people-bubble role-${person.role}`}>{profileInitial(person.label)}</span>
+              <Avatar className={`people-bubble role-${person.role}`} label={person.label} url={person.avatarUrl} />
               <strong>{person.label}</strong>
               <em>{ROLE_LABEL[person.role]}</em>
             </div>
@@ -111,6 +111,7 @@ async function load(projectId: string): Promise<Person[]> {
       userId: row.user_id,
       role: row.role,
       label: labelFor(row.user_id, profiles.get(row.user_id)),
+      avatarUrl: profiles.get(row.user_id)?.avatar_url ?? '',
     }))
     .sort((a, b) => order[a.role] - order[b.role]);
 }

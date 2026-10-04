@@ -4,9 +4,11 @@ export type Profile = {
   user_id: string;
   nickname: string;
   display_name: string;
+  avatar_url: string;
 };
 
-const EMPTY = { nickname: '', display_name: '' };
+const EMPTY = { nickname: '', display_name: '', avatar_url: '' };
+const AVATAR_BUCKET = 'avatars';
 
 export function googleName(user: User | null) {
   const meta = user?.user_metadata ?? {};
@@ -36,7 +38,7 @@ export async function loadOwnProfile() {
 
   const { data, error } = await supabase
     .from('profiles')
-    .select('user_id, nickname, display_name')
+    .select('user_id, nickname, display_name, avatar_url')
     .eq('user_id', user.id)
     .maybeSingle();
 
@@ -47,7 +49,28 @@ export async function loadOwnProfile() {
   return { user, profile: (data as Profile | null) ?? { user_id: user.id, ...EMPTY }, ready: true };
 }
 
-export async function saveOwnProfile(input: { nickname: string; displayName: string }) {
+export async function uploadAvatar(file: File) {
+  if (!file.type.startsWith('image/')) throw new Error('เลือกไฟล์รูปภาพเท่านั้น');
+  if (file.size > 2 * 1024 * 1024) throw new Error('รูปต้องมีขนาดไม่เกิน 2 MB');
+
+  const supabase = await client();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const extension = (file.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
+  const path = `${user.id}/avatar.${extension}`;
+
+  const { error } = await supabase.storage.from(AVATAR_BUCKET).upload(path, file, {
+    upsert: true,
+    contentType: file.type,
+  });
+  if (error) throw new Error(error.message);
+
+  const { data } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path);
+  return `${data.publicUrl}?v=${Date.now()}`;
+}
+
+export async function saveOwnProfile(input: { nickname: string; displayName: string; avatarUrl: string }) {
   const supabase = await client();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
@@ -56,6 +79,7 @@ export async function saveOwnProfile(input: { nickname: string; displayName: str
     user_id: user.id,
     nickname: input.nickname.trim(),
     display_name: input.displayName.trim(),
+    avatar_url: input.avatarUrl.trim(),
     updated_at: new Date().toISOString(),
   };
 
@@ -64,7 +88,7 @@ export async function saveOwnProfile(input: { nickname: string; displayName: str
     throw new Error('ยังไม่ได้สร้างตาราง profiles ใน Supabase ให้รันไฟล์ supabase/migrations/004_profiles.sql ใน SQL Editor ก่อน');
   }
   if (error) throw new Error(error.message);
-  return { user_id: user.id, nickname: row.nickname, display_name: row.display_name };
+  return { user_id: user.id, nickname: row.nickname, display_name: row.display_name, avatar_url: row.avatar_url };
 }
 
 export async function loadProfiles(userIds: string[]) {
@@ -75,7 +99,7 @@ export async function loadProfiles(userIds: string[]) {
   const supabase = await client();
   const { data, error } = await supabase
     .from('profiles')
-    .select('user_id, nickname, display_name')
+    .select('user_id, nickname, display_name, avatar_url')
     .in('user_id', unique);
 
   if (error) {

@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { googleName, loadOwnProfile, profileInitial, profileLabel } from '../../src/lib/profile';
+import { googleName, loadOwnProfile, profileLabel } from '../../src/lib/profile';
+import Avatar from '../components/Avatar';
 import './projects.css';
 
 type Project = {
@@ -26,6 +27,7 @@ export default function ProjectsPage() {
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
   const [profileMark, setProfileMark] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
   const router = useRouter();
 
   useEffect(() => {
@@ -41,7 +43,8 @@ export default function ProjectsPage() {
         return;
       }
       const label = profileLabel(profile, googleName(user) || user.email || '');
-      setProfileMark(profileInitial(label));
+      setProfileMark(label);
+      setAvatarUrl(profile?.avatar_url ?? '');
 
       const { supabase } = await import('../../src/lib/supabase');
 
@@ -142,7 +145,9 @@ export default function ProjectsPage() {
     <main className="projects-app">
       <header className="projects-topbar">
         <div className="projects-brand-group">
-          <a className="profile-entry" href="/profile" title="โปรไฟล์">{profileMark || '·'}</a>
+          <a className="profile-entry" href="/profile" title="โปรไฟล์">
+            <Avatar className="profile-entry-avatar" label={profileMark} url={avatarUrl} />
+          </a>
           <a className="projects-brand" href="/projects">TuyDui</a>
         </div>
         <div className="projects-account">

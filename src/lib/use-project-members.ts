@@ -12,6 +12,7 @@ export type Member = {
   accepted_at: string | null;
   email?: string;
   name?: string;
+  avatarUrl?: string;
 };
 
 export type Invite = {
@@ -66,8 +67,9 @@ export function useProjectMembers(projectId: string) {
     const rows = (data ?? []) as Member[];
     const profiles = await loadProfiles(rows.map((row) => row.user_id));
     setMembers(rows.map((row) => {
-      const name = profileLabel(profiles.get(row.user_id) ?? null);
-      return { ...row, name: name || `สมาชิก ${row.user_id.slice(0, 4)}` };
+      const profile = profiles.get(row.user_id);
+      const name = profileLabel(profile ?? null);
+      return { ...row, name: name || `สมาชิก ${row.user_id.slice(0, 4)}`, avatarUrl: profile?.avatar_url ?? '' };
     }));
   }
 

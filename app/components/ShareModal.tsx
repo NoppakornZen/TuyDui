@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useProjectMembers } from '../../src/lib/use-project-members';
+import Avatar from './Avatar';
 import './ShareModal.css';
 
 type ShareModalProps = {
@@ -186,9 +187,7 @@ export default function ShareModal({ projectId, projectName, onClose }: ShareMod
                       .filter((m) => m.accepted_at)
                       .map((member) => (
                         <div key={member.id} className="member-card">
-                          <div className="member-avatar">
-                            {Array.from(member.name || member.email || 'U')[0]?.toLocaleUpperCase('th-TH')}
-                          </div>
+                          <Avatar className="member-avatar" label={member.name || member.email || 'U'} url={member.avatarUrl} />
                           <div className="member-info">
                             <div className="member-name">
                               {member.name || member.email || 'Unknown User'}
