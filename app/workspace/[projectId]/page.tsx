@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import ShareModal from '../../components/ShareModal';
 import './workspace-redesign.css';
 import './workspace-dashboard.css';
 
@@ -62,6 +63,7 @@ export default function WorkspacePage() {
   const [aiBusy, setAiBusy] = useState<'change' | 'brief' | 'pdf' | 'map' | null>(null);
   const [aiError, setAiError] = useState('');
   const [briefProposals, setBriefProposals] = useState<RequirementRow[]>([]);
+  const [showShareModal, setShowShareModal] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
   const selected = nodes.find((node) => node.id === selectedId) ?? nodes[0];
   const pendingChanges = changes.filter((change) => change.decision === 'Pending');
@@ -90,8 +92,7 @@ export default function WorkspacePage() {
         .from('projects')
         .select('*')
         .eq('id', projectId)
-        .eq('owner_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (error || !project) {
         router.push('/projects');
@@ -410,7 +411,7 @@ export default function WorkspacePage() {
 
   return (
     <main className="workspace-app">
-      <header className="workspace-topbar"><a className="workspace-brand" href="/projects">TuyDui</a><div className="workspace-crumb">Projects <b>/</b> <strong>{projectTitle}</strong></div><div className="workspace-account"><span>{clientName}</span><b>{clientName[0] || 'C'}</b></div></header>
+      <header className="workspace-topbar"><a className="workspace-brand" href="/projects">TuyDui</a><div className="workspace-crumb">Projects <b>/</b> <strong>{projectTitle}</strong></div><button className="button-light" style={{ marginLeft: 'auto', marginRight: '16px', display: 'flex', alignItems: 'center', gap: '8px' }} onClick={() => setShowShareModal(true)}><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 11v2a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h2M10 1h6v6M7 11l9-9"/></svg>Share</button><div className="workspace-account"><span>{clientName}</span><b>{clientName[0] || 'C'}</b></div></header>
       <div className="workspace-layout">
         <aside className="workspace-sidebar"><div className="sidebar-eyebrow">PROJECT WORKSPACE</div><h1>{projectTitle}</h1><p>{latestDocument ? `V${latestDocument.version} · ${latestDocument.name}` : 'No brief yet'}</p><nav>{([['overview','▦','Overview',''],['map','⌘','Project map',''],['requirements','≡','Requirements',String(requirements.length)],['changes','↗','Changes',String(pendingChanges.length)],['history','◷','History','']] as const).map(([tab, icon, label, count]) => <button key={tab} className={activeTab === tab ? 'side-active' : ''} onClick={() => setActiveTab(tab)}>{icon} <span>{label}</span>{count && <em className={tab === 'changes' ? 'danger' : ''}>{count}</em>}</button>)}</nav><div className="sidebar-baseline"><span className="check">{baselineConfirmed ? '✓' : '–'}</span><div><strong>{baselineConfirmed ? 'Baseline V1' : 'Baseline'}</strong><small>{baselineConfirmed ? 'Confirmed' : 'Not confirmed'}</small></div></div></aside>
         <section className="workspace-main"><div className="workspace-header"><div><div className="workspace-kicker"><span /> ACTIVE PROJECT</div><h2>{activeTab === 'map' ? 'Project map' : activeTab === 'overview' ? projectTitle : activeTab === 'requirements' ? 'Requirements' : activeTab === 'changes' ? 'Change review' : 'Project history'}</h2><p>{activeTab === 'map' ? `${requirements.length} requirements · ${workAreas.length} work areas · ${pendingChanges.length} open changes` : latestDocument ? `${latestDocument.pageCount} pages in the latest brief` : 'Send a PDF brief to start'}</p></div>{activeTab === 'map' && <div className="workspace-actions"><button className="button-light" onClick={() => updateZoom(zoom - .1)}>−</button><span className="zoom-readout">{Math.round(zoom * 100)}%</span><button className="button-light" onClick={() => updateZoom(zoom + .1)}>＋</button><button className={`button-light connect ${connectMode ? 'active' : ''}`} onClick={() => { setConnectMode((value) => !value); setConnectSource(null); }}>{connectMode ? 'Select nodes' : '↗ Connect'}</button><button className="button-light" type="button" onClick={buildMap} disabled={aiBusy !== null || requirements.length === 0}>{aiBusy === 'map' ? 'Building map…' : 'Build map'}</button><button className="button-primary" onClick={addNode}>＋ Add node</button></div>}</div>
@@ -456,6 +457,13 @@ export default function WorkspacePage() {
         </section>
         <aside className="workspace-inspector"><div className="inspector-kicker">{selected.kind === 'project' ? 'PROJECT' : 'WORK AREA'}</div><h2>{selected.title}</h2><span className="inspector-status">{selected.impacted ? 'Impacted by open change' : selected.kind === 'project' && baselineConfirmed ? 'Baseline V1 confirmed' : 'Not confirmed'}</span>{selected.summary && <div className="inspector-section"><h3>What this covers</h3><p className="inspector-summary">{selected.summary}</p></div>}<div className="inspector-section"><h3>Owner</h3><div className="inspector-owner"><b className="node-avatar green">{selected.owner[0] || '?'}</b><span>{selected.owner}</span></div></div><div className="inspector-section"><h3>Connected requirements</h3>{linkedRequirements.length === 0 ? <div className="inspector-requirement"><strong>No requirements yet</strong><small>Read a PDF, add the proposals, then build the map.</small><button className="inline-link" onClick={() => setActiveTab('requirements')}>Open requirements →</button></div> : linkedRequirements.map((row) => <div className="inspector-requirement" key={row.id}><strong>{row.title}</strong><small>{row.source}{row.quote ? ` · "${row.quote.slice(0, 120)}"` : ''}</small></div>)}</div><div className="inspector-section"><h3>Notes</h3><textarea value={nodeNotes[selected.id] ?? ''} onChange={(event) => setNodeNotes((current) => ({ ...current, [selected.id]: event.target.value }))} placeholder="Add a note for your team..." /></div><button className="button-primary inspector-save" onClick={() => { setHistory((current) => [`Notes saved for ${selected.title} · Just now`, ...current]); window.alert('Node details saved locally.'); }}>Save node details</button>{!baselineConfirmed && <button className="baseline-action" onClick={confirmBaseline}>Confirm baseline</button>}</aside>
       </div>
+      {showShareModal && (
+        <ShareModal
+          projectId={projectId}
+          projectName={projectTitle}
+          onClose={() => setShowShareModal(false)}
+        />
+      )}
     </main>
   );
 }

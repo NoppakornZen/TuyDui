@@ -3,6 +3,12 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
+function nextPath() {
+  const value = new URLSearchParams(window.location.search).get('redirect') || '';
+  if (!value.startsWith('/') || value.startsWith('//') || value.includes('\\')) return '';
+  return value;
+}
+
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -20,6 +26,8 @@ export default function LoginPage() {
 
       // Dynamically import Supabase client
       const { supabase } = await import('../../src/lib/supabase');
+      const next = nextPath();
+      if (next) window.localStorage.setItem('tuydui-after-login', next);
 
       const { data, error: signInError } = await supabase.auth.signInWithOAuth({
         provider: 'google',

@@ -12,11 +12,7 @@ type Project = {
   baseline_confirmed_at: string | null;
   created_at: string;
   updated_at: string;
-  _counts?: {
-    requirements: number;
-    nodes: number;
-    pending_changes: number;
-  };
+  access: 'owner' | 'shared';
 };
 
 export default function ProjectsPage() {
@@ -45,14 +41,44 @@ export default function ProjectsPage() {
         return;
       }
 
-      const { data, error: fetchError } = await supabase
+      const pending = window.localStorage.getItem('tuydui-after-login');
+      if (pending && pending.startsWith('/') && !pending.startsWith('//')) {
+        window.localStorage.removeItem('tuydui-after-login');
+        router.replace(pending);
+        return;
+      }
+
+      const { data: owned, error: ownedError } = await supabase
         .from('projects')
         .select('*')
         .eq('owner_id', user.id)
         .order('updated_at', { ascending: false });
 
-      if (fetchError) throw fetchError;
-      setProjects(data || []);
+      if (ownedError) throw ownedError;
+
+      const { data: memberships, error: memberError } = await supabase
+        .from('project_members')
+        .select('project_id, projects(*)')
+        .eq('user_id', user.id)
+        .not('accepted_at', 'is', null);
+
+      if (memberError) throw memberError;
+
+      const ownedIds = new Set((owned ?? []).map((project) => project.id));
+      const shared = (memberships ?? [])
+        .map((row) => {
+          const project = Array.isArray(row.projects) ? row.projects[0] : row.projects;
+          return project as Omit<Project, 'access'> | null;
+        })
+        .filter((project): project is Omit<Project, 'access'> => !!project && !ownedIds.has(project.id))
+        .map((project) => ({ ...project, access: 'shared' as const }));
+
+      const all = [
+        ...(owned ?? []).map((project) => ({ ...project, access: 'owner' as const })),
+        ...shared,
+      ].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+
+      setProjects(all);
     } catch (err) {
       console.error('Failed to load projects:', err);
       setError('Failed to load projects');
@@ -153,6 +179,9 @@ export default function ProjectsPage() {
               >
                 <div className="project-card-header">
                   <h3>{project.name}</h3>
+                  {project.access === 'shared' && (
+                    <span className="baseline-badge">Shared</span>
+                  )}
                   {project.baseline_confirmed_at && (
                     <span className="baseline-badge">✓ Baseline V1</span>
                   )}
