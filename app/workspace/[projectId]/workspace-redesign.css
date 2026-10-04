@@ -84,6 +84,105 @@ body {
   font-weight: 600;
 }
 
+.project-people {
+  position: relative;
+  margin-left: auto;
+}
+
+.people-stack {
+  display: flex;
+  align-items: center;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.people-bubble {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #3D4A63;
+  color: #FFFFFF;
+  font-size: 15px;
+  font-weight: 700;
+  border: 2px solid #12171F;
+}
+
+.people-stack .people-bubble + .people-bubble {
+  margin-left: -10px;
+}
+
+.people-bubble.role-owner { background: #FF6B35; }
+.people-bubble.role-editor { background: #2E6BFF; }
+.people-bubble.role-viewer { background: #3D4A63; }
+
+.people-more {
+  margin-left: 8px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.people-panel {
+  position: absolute;
+  top: 52px;
+  right: 0;
+  width: 280px;
+  background: #161D2B;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  padding: 14px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+  z-index: 20;
+}
+
+.people-panel-title {
+  margin: 2px 4px 12px;
+  font-size: 11px;
+  letter-spacing: 1.2px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.people-empty {
+  margin: 0 4px 6px;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 13px;
+}
+
+.people-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 4px;
+}
+
+.people-row .people-bubble {
+  width: 32px;
+  height: 32px;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.people-row strong {
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.people-row em {
+  margin-left: auto;
+  font-style: normal;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  flex-shrink: 0;
+}
+
 /* ========== LAYOUT ========== */
 .workspace-layout {
   display: grid;

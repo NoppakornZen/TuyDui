@@ -187,11 +187,11 @@ export default function ShareModal({ projectId, projectName, onClose }: ShareMod
                       .map((member) => (
                         <div key={member.id} className="member-card">
                           <div className="member-avatar">
-                            {member.email?.[0]?.toUpperCase() || 'U'}
+                            {Array.from(member.name || member.email || 'U')[0]?.toLocaleUpperCase('th-TH')}
                           </div>
                           <div className="member-info">
                             <div className="member-name">
-                              {member.email || 'Unknown User'}
+                              {member.name || member.email || 'Unknown User'}
                             </div>
                             <div className="member-email">
                               Joined {formatDate(member.invited_at)}

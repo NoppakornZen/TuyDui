@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { loadProfiles, profileLabel } from './profile';
 
 export type MemberRole = 'owner' | 'editor' | 'viewer';
 
@@ -10,6 +11,7 @@ export type Member = {
   invited_at: string;
   accepted_at: string | null;
   email?: string;
+  name?: string;
 };
 
 export type Invite = {
@@ -61,7 +63,12 @@ export function useProjectMembers(projectId: string) {
       setMembers([]);
       return;
     }
-    setMembers((data ?? []) as Member[]);
+    const rows = (data ?? []) as Member[];
+    const profiles = await loadProfiles(rows.map((row) => row.user_id));
+    setMembers(rows.map((row) => {
+      const name = profileLabel(profiles.get(row.user_id) ?? null);
+      return { ...row, name: name || `สมาชิก ${row.user_id.slice(0, 4)}` };
+    }));
   }
 
   async function loadInvites() {

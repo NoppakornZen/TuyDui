@@ -25,6 +25,29 @@
   padding: 0 32px;
 }
 
+.projects-brand-group {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.profile-entry {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #FF6B35;
+  color: #FFFFFF;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.profile-entry:hover {
+  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.35);
+}
+
 .projects-brand {
   font-size: 24px;
   font-weight: 700;

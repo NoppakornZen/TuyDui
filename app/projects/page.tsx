@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { googleName, loadOwnProfile, profileInitial, profileLabel } from '../../src/lib/profile';
 import './projects.css';
 
 type Project = {
@@ -24,6 +25,7 @@ export default function ProjectsPage() {
   const [clientName, setClientName] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
+  const [profileMark, setProfileMark] = useState('');
   const router = useRouter();
 
   useEffect(() => {
@@ -33,13 +35,15 @@ export default function ProjectsPage() {
   async function loadProjects() {
     try {
       setLoading(true);
-      const { supabase } = await import('../../src/lib/supabase');
-
-      const { data: { user } } = await supabase.auth.getUser();
+      const { user, profile } = await loadOwnProfile().catch(() => ({ user: null, profile: null }));
       if (!user) {
         router.push('/login');
         return;
       }
+      const label = profileLabel(profile, googleName(user) || user.email || '');
+      setProfileMark(profileInitial(label));
+
+      const { supabase } = await import('../../src/lib/supabase');
 
       const pending = window.localStorage.getItem('tuydui-after-login');
       if (pending && pending.startsWith('/') && !pending.startsWith('//')) {
@@ -137,7 +141,10 @@ export default function ProjectsPage() {
   return (
     <main className="projects-app">
       <header className="projects-topbar">
-        <a className="projects-brand" href="/projects">TuyDui</a>
+        <div className="projects-brand-group">
+          <a className="profile-entry" href="/profile" title="โปรไฟล์">{profileMark || '·'}</a>
+          <a className="projects-brand" href="/projects">TuyDui</a>
+        </div>
         <div className="projects-account">
           <button onClick={handleSignOut} className="signout-btn">ออกจากระบบ</button>
         </div>
