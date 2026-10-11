@@ -1,0 +1,287 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { googleName, loadOwnProfile, profileLabel } from '../../src/lib/profile';
+import Avatar from '../components/Avatar';
+import './projects.css';
+
+type Project = {
+  id: string;
+  name: string;
+  client_name: string;
+  description: string;
+  baseline_confirmed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  access: 'owner' | 'shared';
+};
+
+export default function ProjectsPage() {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [projectName, setProjectName] = useState('');
+  const [clientName, setClientName] = useState('');
+  const [description, setDescription] = useState('');
+  const [error, setError] = useState('');
+  const [profileMark, setProfileMark] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const router = useRouter();
+
+  useEffect(() => {
+    loadProjects();
+  }, []);
+
+  async function loadProjects() {
+    try {
+      setLoading(true);
+      const { user, profile } = await loadOwnProfile().catch(() => ({ user: null, profile: null }));
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+      const label = profileLabel(profile, googleName(user) || user.email || '');
+      setProfileMark(label);
+      setAvatarUrl(profile?.avatar_url ?? '');
+
+      const { supabase } = await import('../../src/lib/supabase');
+
+      const pending = window.localStorage.getItem('tuydui-after-login');
+      if (pending && pending.startsWith('/') && !pending.startsWith('//')) {
+        window.localStorage.removeItem('tuydui-after-login');
+        router.replace(pending);
+        return;
+      }
+
+      const { data: owned, error: ownedError } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('owner_id', user.id)
+        .order('updated_at', { ascending: false });
+
+      if (ownedError) throw ownedError;
+
+      const { data: memberships, error: memberError } = await supabase
+        .from('project_members')
+        .select('project_id, projects(*)')
+        .eq('user_id', user.id)
+        .not('accepted_at', 'is', null);
+
+      if (memberError) throw memberError;
+
+      const ownedIds = new Set((owned ?? []).map((project) => project.id));
+      const shared = (memberships ?? [])
+        .map((row) => {
+          const project = Array.isArray(row.projects) ? row.projects[0] : row.projects;
+          return project as Omit<Project, 'access'> | null;
+        })
+        .filter((project): project is Omit<Project, 'access'> => !!project && !ownedIds.has(project.id))
+        .map((project) => ({ ...project, access: 'shared' as const }));
+
+      const all = [
+        ...(owned ?? []).map((project) => ({ ...project, access: 'owner' as const })),
+        ...shared,
+      ].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+
+      setProjects(all);
+    } catch (err) {
+      console.error('Failed to load projects:', err);
+      setError('Failed to load projects');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function createProject(e: React.FormEvent) {
+    e.preventDefault();
+    if (!projectName.trim() || !clientName.trim() || creating) return;
+
+    try {
+      setCreating(true);
+      setError('');
+
+      const { supabase } = await import('../../src/lib/supabase');
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) throw new Error('Not authenticated');
+
+      const { data, error: createError } = await supabase
+        .from('projects')
+        .insert({
+          owner_id: user.id,
+          name: projectName.trim(),
+          client_name: clientName.trim(),
+          description: description.trim(),
+        })
+        .select()
+        .single();
+
+      if (createError) throw createError;
+
+      router.push(`/workspace/${data.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create project');
+      setCreating(false);
+    }
+  }
+
+  async function handleSignOut() {
+    const { supabase } = await import('../../src/lib/supabase');
+    await supabase.auth.signOut();
+    router.push('/login');
+  }
+
+  function formatDate(date: string) {
+    return new Date(date).toLocaleDateString('th-TH', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  }
+
+  return (
+    <main className="projects-app">
+      <header className="projects-topbar">
+        <div className="projects-brand-group">
+          <a className="profile-entry" href="/profile" title="โปรไฟล์">
+            <Avatar className="profile-entry-avatar" label={profileMark} url={avatarUrl} />
+          </a>
+          <a className="projects-brand" href="/projects">TuyDui</a>
+        </div>
+        <div className="projects-account">
+          <button onClick={handleSignOut} className="signout-btn">ออกจากระบบ</button>
+        </div>
+      </header>
+
+      <div className="projects-container">
+        <div className="projects-header">
+          <div>
+            <div className="projects-kicker"><span /> YOUR WORKSPACE</div>
+            <h1>โปรเจกต์ทั้งหมด</h1>
+            <p>เลือกโปรเจกต์เพื่อเริ่มจัดการ scope และ requirements</p>
+          </div>
+          <button className="button-primary" onClick={() => setShowModal(true)}>
+            ＋ สร้างโปรเจกต์ใหม่
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="projects-loading">
+            <div className="spinner" />
+            <p>กำลังโหลดโปรเจกต์...</p>
+          </div>
+        ) : projects.length === 0 ? (
+          <div className="projects-empty">
+            <div className="empty-icon">📁</div>
+            <h2>ยังไม่มีโปรเจกต์</h2>
+            <p>สร้างโปรเจกต์แรกของคุณเพื่อเริ่มติดตาม scope และจัดการ requirements</p>
+            <button className="button-primary" onClick={() => setShowModal(true)}>
+              สร้างโปรเจกต์แรก
+            </button>
+          </div>
+        ) : (
+          <div className="projects-grid">
+            {projects.map((project) => (
+              <button
+                key={project.id}
+                className="project-card"
+                onClick={() => router.push(`/workspace/${project.id}`)}
+              >
+                <div className="project-card-header">
+                  <h3>{project.name}</h3>
+                  {project.access === 'shared' && (
+                    <span className="baseline-badge">Shared</span>
+                  )}
+                  {project.baseline_confirmed_at && (
+                    <span className="baseline-badge">✓ Baseline V1</span>
+                  )}
+                </div>
+                <div className="project-client">
+                  <strong>Client:</strong> {project.client_name}
+                </div>
+                {project.description && (
+                  <p className="project-description">{project.description}</p>
+                )}
+                <div className="project-card-footer">
+                  <span>อัปเดตล่าสุด {formatDate(project.updated_at)}</span>
+                  <span className="project-arrow">→</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {showModal && (
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>สร้างโปรเจกต์ใหม่</h2>
+              <button className="modal-close" onClick={() => setShowModal(false)}>✕</button>
+            </div>
+
+            <form onSubmit={createProject}>
+              <div className="form-group">
+                <label htmlFor="project-name">ชื่อโปรเจกต์</label>
+                <input
+                  id="project-name"
+                  type="text"
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                  placeholder="เว็บไซต์ e-commerce"
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="client-name">ชื่อลูกค้า</label>
+                <input
+                  id="client-name"
+                  type="text"
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
+                  placeholder="บริษัท ABC จำกัด"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="description">รายละเอียด (ไม่บังคับ)</label>
+                <textarea
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="รายละเอียดเพิ่มเติมเกี่ยวกับโปรเจกต์..."
+                  rows={3}
+                />
+              </div>
+
+              {error && <div className="form-error">{error}</div>}
+
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="button-light"
+                  onClick={() => setShowModal(false)}
+                  disabled={creating}
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  className="button-primary"
+                  disabled={creating || !projectName.trim() || !clientName.trim()}
+                >
+                  {creating ? 'กำลังสร้าง...' : 'สร้างโปรเจกต์'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </main>
+  );
+}
