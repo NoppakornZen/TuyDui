@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { googleName, loadOwnProfile, profileLabel } from '../../src/lib/profile';
 import Avatar from '../components/Avatar';
+import LanguageToggle from '../components/LanguageToggle';
+import { useLocale } from '../components/LocaleProvider';
+import { clearProjectDraft, readProjectDraft } from '../../src/lib/draft';
 import './projects.css';
 
 type Project = {
@@ -18,6 +21,7 @@ type Project = {
 };
 
 export default function ProjectsPage() {
+  const { t, locale } = useLocale();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -28,6 +32,7 @@ export default function ProjectsPage() {
   const [error, setError] = useState('');
   const [profileMark, setProfileMark] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
+  const [draftRestored, setDraftRestored] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -51,8 +56,17 @@ export default function ProjectsPage() {
       const pending = window.localStorage.getItem('tuydui-after-login');
       if (pending && pending.startsWith('/') && !pending.startsWith('//')) {
         window.localStorage.removeItem('tuydui-after-login');
-        router.replace(pending);
+        router.replace(pending as never);
         return;
+      }
+
+      const draft = readProjectDraft();
+      if (draft?.name && draft?.clientName) {
+        setProjectName(draft.name);
+        setClientName(draft.clientName);
+        setDescription(draft.brief);
+        setDraftRestored(true);
+        setShowModal(true);
       }
 
       const { data: owned, error: ownedError } = await supabase
@@ -88,7 +102,7 @@ export default function ProjectsPage() {
       setProjects(all);
     } catch (err) {
       console.error('Failed to load projects:', err);
-      setError('Failed to load projects');
+      setError(t.projects.loadError);
     } finally {
       setLoading(false);
     }
@@ -120,6 +134,8 @@ export default function ProjectsPage() {
 
       if (createError) throw createError;
 
+      clearProjectDraft();
+
       router.push(`/workspace/${data.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create project');
@@ -134,7 +150,7 @@ export default function ProjectsPage() {
   }
 
   function formatDate(date: string) {
-    return new Date(date).toLocaleDateString('th-TH', {
+    return new Date(date).toLocaleDateString(locale === 'th' ? 'th-TH' : 'en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
@@ -145,40 +161,42 @@ export default function ProjectsPage() {
     <main className="projects-app">
       <header className="projects-topbar">
         <div className="projects-brand-group">
-          <a className="profile-entry" href="/profile" title="โปรไฟล์">
+          <a className="profile-entry" href="/profile" title="Profile">
             <Avatar className="profile-entry-avatar" label={profileMark} url={avatarUrl} />
           </a>
           <a className="projects-brand" href="/projects">TuyDui</a>
         </div>
         <div className="projects-account">
-          <button onClick={handleSignOut} className="signout-btn">ออกจากระบบ</button>
+          <LanguageToggle compact />
+          <button onClick={handleSignOut} className="signout-btn">{t.projects.signOut}</button>
         </div>
       </header>
 
       <div className="projects-container">
+        {draftRestored && <div className="draft-restored-banner">✓ {t.projects.restored}</div>}
         <div className="projects-header">
           <div>
-            <div className="projects-kicker"><span /> YOUR WORKSPACE</div>
-            <h1>โปรเจกต์ทั้งหมด</h1>
-            <p>เลือกโปรเจกต์เพื่อเริ่มจัดการ scope และ requirements</p>
+            <div className="projects-kicker"><span /> {t.projects.workspace}</div>
+            <h1>{t.projects.title}</h1>
+            <p>{t.projects.subtitle}</p>
           </div>
           <button className="button-primary" onClick={() => setShowModal(true)}>
-            ＋ สร้างโปรเจกต์ใหม่
+            ＋ {t.projects.new}
           </button>
         </div>
 
         {loading ? (
           <div className="projects-loading">
             <div className="spinner" />
-            <p>กำลังโหลดโปรเจกต์...</p>
+            <p>{t.common.loading}</p>
           </div>
         ) : projects.length === 0 ? (
           <div className="projects-empty">
             <div className="empty-icon">📁</div>
-            <h2>ยังไม่มีโปรเจกต์</h2>
-            <p>สร้างโปรเจกต์แรกของคุณเพื่อเริ่มติดตาม scope และจัดการ requirements</p>
+            <h2>{t.projects.empty}</h2>
+            <p>{t.projects.emptyBody}</p>
             <button className="button-primary" onClick={() => setShowModal(true)}>
-              สร้างโปรเจกต์แรก
+              {t.projects.createFirst}
             </button>
           </div>
         ) : (
@@ -192,20 +210,20 @@ export default function ProjectsPage() {
                 <div className="project-card-header">
                   <h3>{project.name}</h3>
                   {project.access === 'shared' && (
-                    <span className="baseline-badge">Shared</span>
+                    <span className="baseline-badge">{t.projects.shared}</span>
                   )}
                   {project.baseline_confirmed_at && (
-                    <span className="baseline-badge">✓ Baseline V1</span>
+                    <span className="baseline-badge">✓ {t.projects.baseline}</span>
                   )}
                 </div>
                 <div className="project-client">
-                  <strong>Client:</strong> {project.client_name}
+                  <strong>{t.projects.client}:</strong> {project.client_name}
                 </div>
                 {project.description && (
                   <p className="project-description">{project.description}</p>
                 )}
                 <div className="project-card-footer">
-                  <span>อัปเดตล่าสุด {formatDate(project.updated_at)}</span>
+                  <span>{t.projects.updated} {formatDate(project.updated_at)}</span>
                   <span className="project-arrow">→</span>
                 </div>
               </button>
@@ -218,43 +236,43 @@ export default function ProjectsPage() {
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>สร้างโปรเจกต์ใหม่</h2>
+              <h2>{t.projects.createTitle}</h2>
               <button className="modal-close" onClick={() => setShowModal(false)}>✕</button>
             </div>
 
             <form onSubmit={createProject}>
               <div className="form-group">
-                <label htmlFor="project-name">ชื่อโปรเจกต์</label>
+                <label htmlFor="project-name">{t.draft.name}</label>
                 <input
                   id="project-name"
                   type="text"
                   value={projectName}
                   onChange={(e) => setProjectName(e.target.value)}
-                  placeholder="เว็บไซต์ e-commerce"
+                  placeholder={t.draft.namePlaceholder}
                   required
                   autoFocus
                 />
               </div>
 
               <div className="form-group">
-                <label htmlFor="client-name">ชื่อลูกค้า</label>
+                <label htmlFor="client-name">{t.draft.client}</label>
                 <input
                   id="client-name"
                   type="text"
                   value={clientName}
                   onChange={(e) => setClientName(e.target.value)}
-                  placeholder="บริษัท ABC จำกัด"
+                  placeholder={t.draft.clientPlaceholder}
                   required
                 />
               </div>
 
               <div className="form-group">
-                <label htmlFor="description">รายละเอียด (ไม่บังคับ)</label>
+                <label htmlFor="description">{t.projects.description}</label>
                 <textarea
                   id="description"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="รายละเอียดเพิ่มเติมเกี่ยวกับโปรเจกต์..."
+                  placeholder={t.draft.briefPlaceholder}
                   rows={3}
                 />
               </div>
@@ -268,14 +286,14 @@ export default function ProjectsPage() {
                   onClick={() => setShowModal(false)}
                   disabled={creating}
                 >
-                  ยกเลิก
+                  {t.projects.cancel}
                 </button>
                 <button
                   type="submit"
                   className="button-primary"
                   disabled={creating || !projectName.trim() || !clientName.trim()}
                 >
-                  {creating ? 'กำลังสร้าง...' : 'สร้างโปรเจกต์'}
+                  {creating ? t.projects.creating : t.projects.create}
                 </button>
               </div>
             </form>

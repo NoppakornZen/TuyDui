@@ -1,0 +1,28 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; background: #0A0D12; }
+body { font-family: 'Noto Sans Thai', 'Sarabun', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+button, input, textarea { font: inherit; }
+.language-toggle { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; background: rgba(255,255,255,.06); }
+.language-toggle button { border: 0; border-radius: 999px; padding: 6px 9px; color: rgba(255,255,255,.55); background: transparent; cursor: pointer; font-size: 11px; font-weight: 800; letter-spacing: .04em; }
+.language-toggle button.active { color: #fff; background: #FF6B35; box-shadow: 0 3px 10px rgba(255,107,53,.25); }
+.language-toggle-compact button { padding: 4px 7px; font-size: 10px; }
+.button-primary:focus-visible, button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid rgba(255,107,53,.55); outline-offset: 3px; }
+.eyebrow-dot { width: 9px; height: 9px; display: inline-block; margin-right: 8px; border-radius: 50%; background: #2ED573; box-shadow: 0 0 14px rgba(46,213,115,.45); }
+.draft-form { color: #fff; background: rgba(15,19,28,.75); border: 1px solid rgba(255,255,255,.13); border-radius: 24px; padding: 30px; box-shadow: 0 24px 70px rgba(0,0,0,.28); backdrop-filter: blur(18px); }
+.draft-form-heading > div { color: rgba(255,255,255,.55); font-size: 11px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+.draft-form-heading h2 { margin: 14px 0 8px; font-size: 25px; letter-spacing: -.03em; }
+.draft-form-heading p { margin: 0 0 22px; color: rgba(255,255,255,.62); line-height: 1.6; font-size: 14px; }
+.draft-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.draft-fields label { display: grid; gap: 8px; color: rgba(255,255,255,.82); font-size: 13px; font-weight: 700; }
+.draft-fields .draft-brief { grid-column: 1 / -1; }
+.draft-fields input, .draft-fields textarea { width: 100%; color: #fff; background: rgba(0,0,0,.28); border: 1px solid rgba(255,255,255,.16); border-radius: 12px; padding: 12px 14px; resize: vertical; outline: none; }
+.draft-fields input:focus, .draft-fields textarea:focus { border-color: #FF6B35; box-shadow: 0 0 0 3px rgba(255,107,53,.16); }
+.draft-fields input::placeholder, .draft-fields textarea::placeholder { color: rgba(255,255,255,.3); }
+.draft-form-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 22px; color: rgba(255,255,255,.48); font-size: 12px; }
+.draft-form-footer .button-primary { display: inline-flex; align-items: center; gap: 12px; border: 0; border-radius: 12px; padding: 13px 17px; color: #fff; background: #FF6B35; cursor: pointer; font-weight: 800; }
+.draft-form-footer .button-primary:disabled { opacity: .45; cursor: not-allowed; }
+@media (max-width: 640px) { .draft-form { padding: 22px; border-radius: 18px; } .draft-fields { grid-template-columns: 1fr; } .draft-fields .draft-brief { grid-column: auto; } .draft-form-footer { align-items: stretch; flex-direction: column; } .draft-form-footer .button-primary { justify-content: center; } }
+
+/* Public UX/UI follows the live TuyDui light surface; workspace styles remain scoped to the existing app. */
+.draft-form { color: #282924; background: #fffefa; border-color: #deddd7; box-shadow: 0 18px 45px rgba(45,38,28,.08); }
+.draft-form-heading > div { color: #777870; }.draft-form-heading h2 { color: #282924; }.draft-form-heading p { color: #6a6b65; }.draft-fields label { color: #454640; }.draft-fields input,.draft-fields textarea { color: #282924; background: #fff; border-color: #d6d4cc; }.draft-fields input::placeholder,.draft-fields textarea::placeholder { color: #a0a09a; }.draft-form-footer { color: #777870; }.draft-form-footer .button-primary { background: #b85b3c; box-shadow: none; }.draft-form-footer .button-primary:hover:not(:disabled) { background: #a64e32; }

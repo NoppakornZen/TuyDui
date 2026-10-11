@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import AuthProvider from './components/AuthProvider';
+import { LocaleProvider } from './components/LocaleProvider';
+import './globals.css';
 
 export const metadata: Metadata = {
   title: 'TuyDui',
@@ -10,7 +12,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="th">
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        <LocaleProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </LocaleProvider>
       </body>
     </html>
   );

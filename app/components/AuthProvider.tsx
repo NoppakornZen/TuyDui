@@ -2,12 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useLocale } from './LocaleProvider';
+
+const PUBLIC_PATHS = ['/','/tutorial','/login','/auth/callback'];
+const isPublicPath = (pathname: string) => PUBLIC_PATHS.includes(pathname) || pathname.startsWith('/_next');
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
+  const { t } = useLocale();
 
   useEffect(() => {
     setMounted(true);
@@ -15,19 +20,24 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   }, []);
 
   async function checkUser() {
+    if (typeof window !== 'undefined' && isPublicPath(window.location.pathname)) {
+      setUser(null);
+      setLoading(false);
+      return;
+    }
     try {
       // Dynamically import to avoid build-time errors
       const { supabase } = await import('../../src/lib/supabase');
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       setUser(currentUser);
 
-      if (!currentUser && typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+      if (!currentUser && typeof window !== 'undefined' && !isPublicPath(window.location.pathname)) {
         router.push('/login');
       }
     } catch (error) {
       console.error('Auth check failed:', error);
       // Not logged in
-      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+      if (typeof window !== 'undefined' && !isPublicPath(window.location.pathname)) {
         router.push('/login');
       }
     } finally {
@@ -55,18 +65,18 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
         justifyContent: 'center',
         color: '#fff'
       }}>
-        กำลังโหลด...
+        {t.common.loading}
       </div>
     );
   }
 
-  if (!user && typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+  if (!user && typeof window !== 'undefined' && !isPublicPath(window.location.pathname)) {
     return null;
   }
 
   return (
     <div>
-      {user && (
+      {user && typeof window !== 'undefined' && !isPublicPath(window.location.pathname) && (
         <div style={{
           background: '#0F131C',
           borderBottom: '1px solid #1E2636',
@@ -90,7 +100,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
               cursor: 'pointer'
             }}
           >
-            ออกจากระบบ
+            {t.projects.signOut}
           </button>
         </div>
       )}
