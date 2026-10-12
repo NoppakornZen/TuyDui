@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { googleName, loadOwnProfile, profileLabel } from '../../src/lib/profile';
-import Avatar from '../components/Avatar';
-import './projects.css';
+import { loadOwnProfile } from '../../src/lib/profile';
+import { SAMPLE_PROJECT } from '../../src/lib/sample-brief';
+import Icon from '../components/Icon';
+import Dialog from '../components/Dialog';
+import './projects-design.css';
 
 type Project = {
   id: string;
@@ -26,8 +28,8 @@ export default function ProjectsPage() {
   const [clientName, setClientName] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
-  const [profileMark, setProfileMark] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState('');
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<'all' | 'owner' | 'shared'>('all');
   const router = useRouter();
 
   useEffect(() => {
@@ -37,21 +39,18 @@ export default function ProjectsPage() {
   async function loadProjects() {
     try {
       setLoading(true);
-      const { user, profile } = await loadOwnProfile().catch(() => ({ user: null, profile: null }));
+      const { user } = await loadOwnProfile().catch(() => ({ user: null }));
       if (!user) {
         router.push('/login');
         return;
       }
-      const label = profileLabel(profile, googleName(user) || user.email || '');
-      setProfileMark(label);
-      setAvatarUrl(profile?.avatar_url ?? '');
 
       const { supabase } = await import('../../src/lib/supabase');
 
       const pending = window.localStorage.getItem('tuydui-after-login');
       if (pending && pending.startsWith('/') && !pending.startsWith('//')) {
         window.localStorage.removeItem('tuydui-after-login');
-        router.replace(pending);
+        router.replace(pending as Parameters<typeof router.replace>[0]);
         return;
       }
 
@@ -127,6 +126,27 @@ export default function ProjectsPage() {
     }
   }
 
+  async function createSampleProject() {
+    if (creating) return;
+    try {
+      setCreating(true);
+      setError('');
+      const { supabase } = await import('../../src/lib/supabase');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+      const { data, error: createError } = await supabase
+        .from('projects')
+        .insert({ owner_id: user.id, name: SAMPLE_PROJECT.name, client_name: SAMPLE_PROJECT.client, description: SAMPLE_PROJECT.description })
+        .select()
+        .single();
+      if (createError) throw createError;
+      router.push(`/workspace/${data.id}?sample=1`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create the sample project');
+      setCreating(false);
+    }
+  }
+
   async function handleSignOut() {
     const { supabase } = await import('../../src/lib/supabase');
     await supabase.auth.signOut();
@@ -134,154 +154,63 @@ export default function ProjectsPage() {
   }
 
   function formatDate(date: string) {
-    return new Date(date).toLocaleDateString('th-TH', {
+    return new Date(date).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
     });
   }
 
+  const search = query.trim().toLocaleLowerCase();
+  const visibleProjects = projects.filter((project) => (filter === 'all' || project.access === filter) && [project.name, project.client_name, project.description].some((value) => (value || '').toLocaleLowerCase().includes(search)));
+  const ownedCount = projects.filter((project) => project.access === 'owner').length;
+  const confirmedCount = projects.filter((project) => !!project.baseline_confirmed_at).length;
+
   return (
     <main className="projects-app">
-      <header className="projects-topbar">
-        <div className="projects-brand-group">
-          <a className="profile-entry" href="/profile" title="โปรไฟล์">
-            <Avatar className="profile-entry-avatar" label={profileMark} url={avatarUrl} />
-          </a>
-          <a className="projects-brand" href="/projects">TuyDui</a>
-        </div>
-        <div className="projects-account">
-          <button onClick={handleSignOut} className="signout-btn">ออกจากระบบ</button>
-        </div>
-      </header>
-
       <div className="projects-container">
         <div className="projects-header">
-          <div>
-            <div className="projects-kicker"><span /> YOUR WORKSPACE</div>
-            <h1>โปรเจกต์ทั้งหมด</h1>
-            <p>เลือกโปรเจกต์เพื่อเริ่มจัดการ scope และ requirements</p>
+          <div><h1>Projects</h1><p>Briefs, project scope, and client requests.</p></div>
+          <div className="projects-header-actions">
+            <button className="button-light" onClick={createSampleProject} disabled={creating}><Icon name="spark" />Try a sample project</button>
+            <button className="button-primary" onClick={() => setShowModal(true)}><Icon name="plus" />Create project</button>
           </div>
-          <button className="button-primary" onClick={() => setShowModal(true)}>
-            ＋ สร้างโปรเจกต์ใหม่
+        </div>
+        {error && !showModal && <div className="error-banner" role="alert"><span>{error}</span><button className="button-light" onClick={() => { setError(''); void loadProjects(); }}>Try again</button></div>}
+        <p className="projects-summary">{loading ? 'Loading...' : `${projects.length} ${projects.length === 1 ? 'project' : 'projects'} · ${confirmedCount} with confirmed scope · ${projects.length - ownedCount} shared with you`}</p>
+        <div className="projects-toolbar">
+          <div className="project-filters" aria-label="Filter projects">
+            <button aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>All <span>{projects.length}</span></button>
+            <button aria-pressed={filter === 'owner'} onClick={() => setFilter('owner')}>Owned by me <span>{ownedCount}</span></button>
+            <button aria-pressed={filter === 'shared'} onClick={() => setFilter('shared')}>Shared with me <span>{projects.length - ownedCount}</span></button>
+          </div>
+          <label className="project-search"><Icon name="search" size={16} /><span className="sr-only">Search projects or clients</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search projects or clients..." /></label>
+        </div>
+        {loading ? <div className="projects-loading" role="status"><div className="spinner" /><p>Loading projects...</p></div> : projects.length === 0 ? (
+          <div className="projects-empty"><div className="empty-icon"><Icon name="folder" size={30} /></div><h2>Start your first project</h2><p>Create a project, then upload a PDF brief or paste text<br />to start building requirements and a project map.<br />Or try the sample project to see the full flow in a few minutes.</p><div className="projects-empty-actions"><button className="button-light" onClick={createSampleProject} disabled={creating}><Icon name="spark" />Try a sample project</button><button className="button-primary" onClick={() => setShowModal(true)}><Icon name="plus" />Create your first project</button></div></div>
+        ) : visibleProjects.length === 0 ? (
+          <div className="projects-empty"><div className="empty-icon"><Icon name="search" size={28} /></div><h2>No matching projects</h2><p>Try a different search or view all projects.</p><button className="button-light" onClick={() => { setQuery(''); setFilter('all'); }}>View all projects</button></div>
+        ) : <div className="projects-list"><div className="project-list-head" aria-hidden="true"><span>Project name</span><span>Client</span><span>Scope</span><span>Last updated</span><span /></div>{visibleProjects.map((project) => (
+          <button key={project.id} className="project-card" onClick={() => router.push(`/workspace/${project.id}`)}>
+            <div className="project-title-cell"><h3>{project.name}</h3><p className="project-description">{project.description || 'No project description yet.'}</p></div>
+            <span className="project-client">{project.client_name}</span>
+            <span className={`baseline-badge ${project.baseline_confirmed_at ? '' : 'draft'}`}>{project.baseline_confirmed_at ? <><Icon name="check" size={13} />Confirmed</> : 'Draft scope'}</span>
+            <span className="project-updated">{formatDate(project.updated_at)}<small>{project.access === 'shared' ? 'Shared with you' : 'You own this project'}</small></span>
+            <Icon name="arrow" size={17} />
           </button>
-        </div>
-
-        {loading ? (
-          <div className="projects-loading">
-            <div className="spinner" />
-            <p>กำลังโหลดโปรเจกต์...</p>
-          </div>
-        ) : projects.length === 0 ? (
-          <div className="projects-empty">
-            <div className="empty-icon">📁</div>
-            <h2>ยังไม่มีโปรเจกต์</h2>
-            <p>สร้างโปรเจกต์แรกของคุณเพื่อเริ่มติดตาม scope และจัดการ requirements</p>
-            <button className="button-primary" onClick={() => setShowModal(true)}>
-              สร้างโปรเจกต์แรก
-            </button>
-          </div>
-        ) : (
-          <div className="projects-grid">
-            {projects.map((project) => (
-              <button
-                key={project.id}
-                className="project-card"
-                onClick={() => router.push(`/workspace/${project.id}`)}
-              >
-                <div className="project-card-header">
-                  <h3>{project.name}</h3>
-                  {project.access === 'shared' && (
-                    <span className="baseline-badge">Shared</span>
-                  )}
-                  {project.baseline_confirmed_at && (
-                    <span className="baseline-badge">✓ Baseline V1</span>
-                  )}
-                </div>
-                <div className="project-client">
-                  <strong>Client:</strong> {project.client_name}
-                </div>
-                {project.description && (
-                  <p className="project-description">{project.description}</p>
-                )}
-                <div className="project-card-footer">
-                  <span>อัปเดตล่าสุด {formatDate(project.updated_at)}</span>
-                  <span className="project-arrow">→</span>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
+        ))}</div>}
+        <p className="projects-helper">The baseline is your agreed scope. Use it to compare new client requests.</p>
       </div>
-
-      {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>สร้างโปรเจกต์ใหม่</h2>
-              <button className="modal-close" onClick={() => setShowModal(false)}>✕</button>
-            </div>
-
-            <form onSubmit={createProject}>
-              <div className="form-group">
-                <label htmlFor="project-name">ชื่อโปรเจกต์</label>
-                <input
-                  id="project-name"
-                  type="text"
-                  value={projectName}
-                  onChange={(e) => setProjectName(e.target.value)}
-                  placeholder="เว็บไซต์ e-commerce"
-                  required
-                  autoFocus
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="client-name">ชื่อลูกค้า</label>
-                <input
-                  id="client-name"
-                  type="text"
-                  value={clientName}
-                  onChange={(e) => setClientName(e.target.value)}
-                  placeholder="บริษัท ABC จำกัด"
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="description">รายละเอียด (ไม่บังคับ)</label>
-                <textarea
-                  id="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="รายละเอียดเพิ่มเติมเกี่ยวกับโปรเจกต์..."
-                  rows={3}
-                />
-              </div>
-
-              {error && <div className="form-error">{error}</div>}
-
-              <div className="modal-actions">
-                <button
-                  type="button"
-                  className="button-light"
-                  onClick={() => setShowModal(false)}
-                  disabled={creating}
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  type="submit"
-                  className="button-primary"
-                  disabled={creating || !projectName.trim() || !clientName.trim()}
-                >
-                  {creating ? 'กำลังสร้าง...' : 'สร้างโปรเจกต์'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {showModal && <Dialog labelledBy="create-project-title" onClose={() => setShowModal(false)}>
+        <div className="dialog-header"><div><h2 id="create-project-title">Create a new project</h2><p>Name the project and client. You can add the brief next.</p></div><button className="icon-button" onClick={() => setShowModal(false)} aria-label="Close dialog"><Icon name="close" /></button></div>
+        <form className="project-create-form" onSubmit={createProject}>
+          <div className="form-group"><label htmlFor="project-name">Project name</label><input id="project-name" value={projectName} onChange={(event) => setProjectName(event.target.value)} placeholder="e.g. Coffee shop website" required autoFocus data-autofocus /></div>
+          <div className="form-group"><label htmlFor="client-name">Client name</label><input id="client-name" value={clientName} onChange={(event) => setClientName(event.target.value)} placeholder="e.g. Northstar Studio" required /></div>
+          <div className="form-group"><label htmlFor="description">Description <small>(optional)</small></label><textarea id="description" value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Project goals or anything the team should know" rows={3} /></div>
+          {error && <div className="form-error" role="alert">{error}</div>}
+          <div className="modal-actions"><button type="button" className="button-light" onClick={() => setShowModal(false)} disabled={creating}>Cancel</button><button type="submit" className="button-primary" disabled={creating || !projectName.trim() || !clientName.trim()}>{creating ? 'Creating...' : 'Create project'}<Icon name="arrow" size={16} /></button></div>
+        </form>
+      </Dialog>}
     </main>
   );
 }

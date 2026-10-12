@@ -23,7 +23,7 @@ export function profileLabel(profile: Pick<Profile, 'nickname' | 'display_name'>
 
 export function profileInitial(label: string) {
   const first = Array.from(label.trim())[0];
-  return first ? first.toLocaleUpperCase('th-TH') : '?';
+  return first ? first.toLocaleUpperCase('en-US') : '?';
 }
 
 async function client(): Promise<SupabaseClient> {
@@ -50,8 +50,8 @@ export async function loadOwnProfile() {
 }
 
 export async function uploadAvatar(file: File) {
-  if (!file.type.startsWith('image/')) throw new Error('เลือกไฟล์รูปภาพเท่านั้น');
-  if (file.size > 2 * 1024 * 1024) throw new Error('รูปต้องมีขนาดไม่เกิน 2 MB');
+  if (!file.type.startsWith('image/')) throw new Error('Please select an image file.');
+  if (file.size > 2 * 1024 * 1024) throw new Error('The image must be 2 MB or smaller.');
 
   const supabase = await client();
   const { data: { user } } = await supabase.auth.getUser();
@@ -85,7 +85,7 @@ export async function saveOwnProfile(input: { nickname: string; displayName: str
 
   const { error } = await supabase.from('profiles').upsert(row, { onConflict: 'user_id' });
   if (error?.code === 'PGRST205') {
-    throw new Error('ยังไม่ได้สร้างตาราง profiles ใน Supabase ให้รันไฟล์ supabase/migrations/004_profiles.sql ใน SQL Editor ก่อน');
+    throw new Error('Profiles are not available yet. Please contact the project administrator.');
   }
   if (error) throw new Error(error.message);
   return { user_id: user.id, nickname: row.nickname, display_name: row.display_name, avatar_url: row.avatar_url };

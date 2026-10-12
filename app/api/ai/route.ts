@@ -2,6 +2,9 @@ import type { Requirement, ScopeChange, SourceDocument } from '../../../src/doma
 import { AIRequestError, MaxPlusAIProvider, aiStatus, createAIProvider } from '../../../src/services/ai/maxplus';
 import { readAIUsage, summarizeAIUsage } from '../../../src/services/ai/usage';
 import { requireAuth, checkRateLimit, recordUsage } from '../../../src/lib/rate-limit';
+import { requireProjectAccess } from '../../../src/lib/project-access';
+import { readApprovedWorkspace } from '../../../src/lib/approved-scope';
+import { requirementForAI } from '../../../src/domain/workspace';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -16,12 +19,15 @@ const TASKS = new Set([
   'suggest_project_structure',
 ]);
 
-const recentCalls: number[] = [];
-
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const status = aiStatus();
-  const usage = url.searchParams.get('usage') === '1' ? summarizeAIUsage(await readAIUsage()) : undefined;
+  let usage;
+  if (url.searchParams.get('usage') === '1' || url.searchParams.get('live') === '1') {
+    const auth = await requireAuth(request);
+    if (auth instanceof Response) return auth;
+    if (url.searchParams.get('usage') === '1') usage = summarizeAIUsage(await readAIUsage(auth.userId));
+  }
   if (url.searchParams.get('live') !== '1') return Response.json({ ...status, usage });
 
   const provider = createAIProvider();
@@ -43,7 +49,7 @@ export async function POST(request: Request) {
   const { userId } = auth;
 
   // Check rate limit
-  const rateLimit = await checkRateLimit(userId, 'FREE');
+  const rateLimit = await checkRateLimit(userId);
   if (!rateLimit.allowed) {
     return Response.json({
       error: `Rate limit exceeded. Try again in ${rateLimit.resetIn} seconds.`,
@@ -55,16 +61,23 @@ export async function POST(request: Request) {
   const task = typeof body?.task === 'string' ? body.task : '';
   if (!body || !TASKS.has(task)) return Response.json({ error: 'Unknown AI task.' }, { status: 400 });
 
-  // Record usage
-  await recordUsage(userId, task);
-
-  const provider = createAIProvider();
   try {
+    const projectId = task === 'draft_change_explanation' ? asChange(body.change).projectId : requiredText(body.projectId, 'projectId');
+    const access = await requireProjectAccess(userId, projectId, true);
+    if (access) return access;
+    let changeInput;
+    if (task === 'classify_client_message' || task === 'analyze_change_impact' || task === 'compare_requirement_pair') {
+      const approved = await readApprovedWorkspace(projectId);
+      if (approved instanceof Response) return approved;
+      changeInput = { userId, projectId, rawRequest: task === 'compare_requirement_pair' ? '' : requiredText(body.rawRequest, 'rawRequest'), currentRequirements: approved.scope.requirements.map((row) => requirementForAI(row, projectId, true)), nodes: approved.scope.nodes, members: asMembers(body.members) };
+    }
+    await recordUsage(userId, task);
+    const provider = createAIProvider();
     if (task === 'extract_requirements') {
       const projectId = requiredText(body.projectId, 'projectId');
       const text = requiredText(body.text, 'text');
       const result = await provider.extractRequirements({
-        userId: optionalText(body.userId),
+        userId,
         projectId,
         document: asDocument(body.document, projectId),
         text,
@@ -72,32 +85,32 @@ export async function POST(request: Request) {
       return Response.json({ task, proposalOnly: true, ...result });
     }
     if (task === 'classify_client_message') {
-      const result = await provider.classifyClientChange(asChangeInput(body));
+      const result = await provider.classifyClientChange(changeInput!);
       return Response.json({ task, proposalOnly: true, ...result });
     }
     if (task === 'analyze_change_impact') {
-      const result = await provider.analyzeImpact(asChangeInput(body));
+      const result = await provider.analyzeImpact(changeInput!);
       return Response.json({ task, proposalOnly: true, ...result });
     }
     if (task === 'compare_requirement_pair') {
       const result = await provider.compareRequirements({
-        userId: optionalText(body.userId),
+        userId,
         projectId: requiredText(body.projectId, 'projectId'),
-        current: asRequirements(body.current, 'current'),
+        current: changeInput!.currentRequirements,
         incoming: asIncoming(body.incoming),
       });
       return Response.json({ task, proposalOnly: true, ...result });
     }
     if (task === 'draft_change_explanation') {
       const result = await provider.draftClientExplanation({
-        userId: optionalText(body.userId),
+        userId,
         change: asChange(body.change),
         existingScopeSummary: optionalText(body.existingScopeSummary),
       });
       return Response.json({ task, proposalOnly: true, ...result });
     }
     const result = await provider.suggestProjectStructure({
-      userId: optionalText(body.userId),
+      userId,
       projectId: requiredText(body.projectId, 'projectId'),
       requirements: asRequirements(body.requirements, 'requirements'),
       members: asMembers(body.members),
@@ -106,14 +119,6 @@ export async function POST(request: Request) {
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : 'AI request failed.' }, { status: httpStatus(error) });
   }
-}
-
-function limited(): boolean {
-  const now = Date.now();
-  while (recentCalls.length > 0 && now - recentCalls[0] > 60_000) recentCalls.shift();
-  if (recentCalls.length >= 30) return true;
-  recentCalls.push(now);
-  return false;
 }
 
 function httpStatus(error: unknown): number {
@@ -149,17 +154,6 @@ function asDocument(value: unknown, projectId: string): SourceDocument {
     sourceType,
     uploadedAt: optionalText(row.uploadedAt) ?? new Date().toISOString(),
     processingStatus: 'processing',
-  };
-}
-
-function asChangeInput(body: Record<string, unknown>) {
-  return {
-    userId: optionalText(body.userId),
-    projectId: requiredText(body.projectId, 'projectId'),
-    rawRequest: requiredText(body.rawRequest, 'rawRequest'),
-    currentRequirements: asRequirements(body.currentRequirements, 'currentRequirements'),
-    nodes: asNodes(body.nodes),
-    members: asMembers(body.members),
   };
 }
 

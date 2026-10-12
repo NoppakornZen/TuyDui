@@ -20,7 +20,40 @@ export interface AIUsageEvent {
 
 const FILE = path.join(process.cwd(), 'data', 'ai-usage.jsonl');
 
-export async function recordAIUsage(event: AIUsageEvent): Promise<void> {
+type UsageRow = {
+  id: string;
+  user_id: string | null;
+  project_id: string | null;
+  task_type: string;
+  provider: string;
+  model: string;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  provider_cost: number | null;
+  success: boolean;
+  error_message: string | null;
+  created_at: string;
+};
+
+function rowToEvent(row: UsageRow): AIUsageEvent {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    projectId: row.project_id,
+    provider: row.provider,
+    model: row.model,
+    taskType: row.task_type as AITaskType,
+    inputTokens: row.input_tokens ?? 0,
+    outputTokens: row.output_tokens ?? 0,
+    providerCost: row.provider_cost,
+    requestId: null,
+    success: row.success,
+    errorCode: row.error_message,
+    createdAt: row.created_at,
+  };
+}
+
+async function fileFallback(event: AIUsageEvent): Promise<void> {
   try {
     await mkdir(path.dirname(FILE), { recursive: true });
     await appendFile(FILE, `${JSON.stringify(event)}\n`, 'utf8');
@@ -30,10 +63,75 @@ export async function recordAIUsage(event: AIUsageEvent): Promise<void> {
   }
 }
 
-export async function readAIUsage(): Promise<AIUsageEvent[]> {
+// Usage lives in Postgres so it survives serverless instances. The local file
+// is only a fallback for development without Supabase credentials.
+export async function recordAIUsage(event: AIUsageEvent): Promise<void> {
+  try {
+    const { supabaseAdmin } = await import('../../lib/supabase-admin');
+    if (event.userId) {
+      // The quota row written before the call becomes the detailed record,
+      // so one request never counts twice against the quota.
+      const { data: quotaRow } = await supabaseAdmin
+        .from('ai_usage_events')
+        .select('id')
+        .eq('user_id', event.userId)
+        .eq('task_type', event.taskType)
+        .eq('model', 'quota')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (quotaRow) {
+        const { error } = await supabaseAdmin.from('ai_usage_events').update({
+          project_id: event.projectId || null,
+          provider: event.provider,
+          model: event.model,
+          input_tokens: event.inputTokens,
+          output_tokens: event.outputTokens,
+          provider_cost: event.providerCost,
+          success: event.success,
+          error_message: event.errorCode,
+        }).eq('id', quotaRow.id);
+        if (!error) return;
+        console.warn('AI usage update failed:', error.message);
+      }
+    }
+    const { error } = await supabaseAdmin.from('ai_usage_events').insert({
+      user_id: event.userId,
+      project_id: event.projectId || null,
+      task_type: event.taskType,
+      provider: event.provider,
+      model: event.model,
+      input_tokens: event.inputTokens,
+      output_tokens: event.outputTokens,
+      provider_cost: event.providerCost,
+      success: event.success,
+      error_message: event.errorCode,
+    });
+    if (error) {
+      console.warn('AI usage insert failed:', error.message);
+      await fileFallback(event);
+    }
+  } catch (error) {
+    console.warn('AI usage store unavailable, using the local file:', error);
+    await fileFallback(event);
+  }
+}
+
+export async function readAIUsage(userId?: string): Promise<AIUsageEvent[]> {
+  try {
+    const { supabaseAdmin } = await import('../../lib/supabase-admin');
+    let query = supabaseAdmin.from('ai_usage_events').select('*').order('created_at', { ascending: false }).limit(1000);
+    if (userId) query = query.eq('user_id', userId);
+    const { data, error } = await query;
+    if (error) throw error;
+    return ((data ?? []) as UsageRow[]).map(rowToEvent);
+  } catch {
+    // Development fallback: read the local file.
+  }
   try {
     const raw = await readFile(FILE, 'utf8');
-    return raw.split('\n').filter(Boolean).map((line) => JSON.parse(line) as AIUsageEvent);
+    const events = raw.split('\n').filter(Boolean).map((line) => JSON.parse(line) as AIUsageEvent);
+    return userId ? events.filter((event) => event.userId === userId) : events;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
     throw error;

@@ -59,13 +59,17 @@ interface ProviderMessage {
   id?: string;
   model?: string;
   content?: Array<{ type?: string; text?: string }>;
+  stop_reason?: string;
   usage?: ProviderUsage;
   error?: { type?: string; message?: string };
   cost?: number;
   provider_cost?: number;
 }
 
-const TEXT_LIMIT = 80_000;
+const TEXT_LIMIT = 160_000;
+/** Extra rounds a reply may continue after hitting the max_tokens stop. */
+const MAX_CONTINUATIONS = 3;
+const CONTINUE_PROMPT = 'Continue exactly where you stopped. Do not repeat or restart anything. Output only the remaining text.';
 
 export function aiStatus(env: Record<string, string | undefined> = process.env): AIStatus {
   const provider = env.AI_PROVIDER?.trim() || 'unconfigured';
@@ -108,7 +112,7 @@ export class MaxPlusAIProvider implements AIProvider {
 
   async extractRequirements(input: ExtractRequirementsInput): Promise<AIResult<Requirement[]>> {
     const text = clip(input.text);
-    const completion = await this.complete('extract_requirements', input.projectId, input.userId, extractionSystem(), extractionUser(text, input.document.name), 8000);
+    const completion = await this.complete('extract_requirements', input.projectId, input.userId, extractionSystem(), extractionUser(text, input.document.name), 16000);
     return {
       data: validateRequirements(completion.json, input.projectId, input.document.id),
       usage: completion.usage,
@@ -220,7 +224,7 @@ export class MaxPlusAIProvider implements AIProvider {
       members: input.members ?? [],
       output: { nodes: [{ tempId: 'phase-1', parentTempId: null, title: '', summary: '', category: '', requirementIds: [], suggestedRole: '', suggestedMemberId: null }] },
     });
-    const completion = await this.complete('suggest_project_structure', input.projectId, input.userId, structureSystem(), user, 8000);
+    const completion = await this.complete('suggest_project_structure', input.projectId, input.userId, structureSystem(), user, 16000);
     const ids = new Set(input.requirements.map((item) => item.id));
     return { data: validateStructure(completion.json, ids, input.members ?? []), usage: completion.usage };
   }
@@ -286,22 +290,31 @@ export class MaxPlusAIProvider implements AIProvider {
   }
 
   private async requestMessage(system: string, user: string, maxTokens: number): Promise<ProviderMessage> {
-    const response = await fetch(this.config.messagesUrl, {
-      method: 'POST',
-      headers: this.headers(),
-      body: JSON.stringify({
-        model: this.config.model,
-        max_tokens: maxTokens,
-        system,
-        messages: [{ role: 'user', content: user }],
-      }),
-      signal: AbortSignal.timeout(240_000),
-    });
-    const payload = await response.json().catch(() => null) as ProviderMessage | null;
-    if (!response.ok || !payload) throw new AIRequestError(response.status, this.redact(payload?.error?.message));
-    const text = (payload.content ?? []).some((block) => block.type === 'text' && block.text);
-    if (!text) throw new AIRequestError(response.status, 'The model returned no text.');
-    return payload;
+    const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [{ role: 'user', content: user }];
+    let merged: ProviderMessage | null = null;
+    let fullText = '';
+    for (let round = 0; round <= MAX_CONTINUATIONS; round += 1) {
+      const response = await fetch(this.config.messagesUrl, {
+        method: 'POST',
+        headers: this.headers(),
+        body: JSON.stringify({
+          model: this.config.model,
+          max_tokens: maxTokens,
+          system,
+          messages,
+        }),
+        signal: AbortSignal.timeout(240_000),
+      });
+      const payload = await response.json().catch(() => null) as ProviderMessage | null;
+      if (!response.ok || !payload) throw new AIRequestError(response.status, this.redact(payload?.error?.message));
+      const chunk = (payload.content ?? []).filter((block) => block.type === 'text' && block.text).map((block) => block.text).join('');
+      if (!chunk && !merged) throw new AIRequestError(response.status, 'The model returned no text.');
+      fullText += chunk;
+      merged = mergeMessage(merged, payload);
+      if (payload.stop_reason !== 'max_tokens' || !chunk) break;
+      messages.push({ role: 'assistant', content: chunk }, { role: 'user', content: CONTINUE_PROMPT });
+    }
+    return { ...merged, content: [{ type: 'text', text: fullText }] };
   }
 
   private redact(value: string | undefined): string | undefined {
@@ -345,6 +358,23 @@ export class AIRequestError extends Error {
 function readCost(message: ProviderMessage): number | null {
   const value = message.provider_cost ?? message.cost;
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function mergeMessage(acc: ProviderMessage | null, next: ProviderMessage): ProviderMessage {
+  if (!acc) return next;
+  const sum = (a?: number, b?: number) => (typeof a === 'number' && Number.isFinite(a) ? a : 0) + (typeof b === 'number' && Number.isFinite(b) ? b : 0) || undefined;
+  return {
+    ...next,
+    id: next.id ?? acc.id,
+    usage: {
+      input_tokens: sum(acc.usage?.input_tokens, next.usage?.input_tokens),
+      output_tokens: sum(acc.usage?.output_tokens, next.usage?.output_tokens),
+      cache_creation_input_tokens: sum(acc.usage?.cache_creation_input_tokens, next.usage?.cache_creation_input_tokens),
+      cache_read_input_tokens: sum(acc.usage?.cache_read_input_tokens, next.usage?.cache_read_input_tokens),
+    },
+    cost: sum(acc.cost, next.cost),
+    provider_cost: sum(acc.provider_cost, next.provider_cost),
+  };
 }
 
 function clip(value: string): string {

@@ -1,13 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import Brand from './Brand';
+import Icon from './Icon';
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     setMounted(true);
@@ -47,16 +50,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
   if (!mounted || loading) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        background: '#0A0D12',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: '#fff'
-      }}>
-        กำลังโหลด...
-      </div>
+      <div className="app-loading" role="status"><Brand href="/login" /><div className="spinner" /><p>Opening your workspace...</p></div>
     );
   }
 
@@ -66,33 +60,15 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
 
   return (
     <div>
-      {user && (
-        <div style={{
-          background: '#0F131C',
-          borderBottom: '1px solid #1E2636',
-          padding: '0.75rem 1.5rem',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <div style={{ color: '#9CA3AF', fontSize: '0.875rem' }}>
-            {user.email}
-          </div>
-          <button
-            onClick={handleSignOut}
-            style={{
-              background: 'transparent',
-              border: '1px solid #374151',
-              borderRadius: '6px',
-              padding: '0.5rem 1rem',
-              color: '#D1D5DB',
-              fontSize: '0.875rem',
-              cursor: 'pointer'
-            }}
-          >
-            ออกจากระบบ
-          </button>
-        </div>
+      {user && pathname !== '/login' && (
+        <header className="app-topbar">
+          <Brand />
+          <nav className="app-nav" aria-label="Main navigation">
+            <a href="/projects" aria-current={pathname.startsWith('/projects') || pathname.startsWith('/workspace') ? 'page' : undefined}><Icon name="folder" />Projects</a>
+            <a href="/profile" aria-current={pathname === '/profile' ? 'page' : undefined}><Icon name="user" />Profile</a>
+          </nav>
+          <div className="app-account"><span className="account-email" title={user.email}>{user.email}</span><button className="signout-btn" onClick={handleSignOut} title="Sign out"><Icon name="logout" size={16} /><span>Sign out</span></button></div>
+        </header>
       )}
       {children}
     </div>

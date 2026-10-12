@@ -3,3 +3,23 @@
 @media(max-width:700px){.overview-metrics{grid-template-columns:repeat(2,1fr)}.requirement-row{grid-template-columns:2fr 1fr 15px}.requirement-row>b,.requirement-row>a,.requirement-row>em{display:none}.change-review-card{width:calc(100% - 15px)}}
 .workspace-sidebar nav button{height:38px;border:0;background:transparent;border-radius:7px;display:flex;align-items:center;gap:11px;padding:0 10px;color:#77828e;text-decoration:none;font:600 13px Arial;text-align:left;width:100%;cursor:pointer}.workspace-sidebar nav button:hover,.workspace-sidebar nav button.side-active{background:#efedff;color:#5145bd}.workspace-sidebar nav button em{font-style:normal;margin-left:auto;font-size:10px;color:#9ca5af}.workspace-sidebar nav button em.danger{color:#bd5b78;background:#fae8ed;border-radius:10px;padding:2px 6px}.overview-change{border:0;background:#fff;cursor:pointer;font-family:Arial}.overview-card header button{border:0;background:transparent;cursor:pointer}.change-review-card{cursor:pointer;font-family:Arial}.workspace-table>header .button-primary{border:0;color:#fff;background:#6254d9}.workspace-table>header .button-primary:hover{background:#4f43be}
 .change-actions{display:flex;gap:5px;margin-top:12px}.change-actions button{border:1px solid #e3e7eb;background:#fff;border-radius:5px;padding:6px 7px;color:#6254d9;font-size:9px;font-weight:700;cursor:pointer}.change-actions button:hover{background:#efedff}.baseline-action{width:100%;margin-top:8px;height:34px;border:1px solid #cfc9f6;background:#f5f3ff;color:#5145bd;border-radius:6px;font-size:10px;font-weight:700}.inline-link{display:block;border:0;background:none;color:#6254d9;padding:0;margin-top:8px;font-size:9px;font-weight:700;cursor:pointer}
+.workspace-save-state {
+  position: fixed;
+  left: 20px;
+  bottom: 16px;
+  z-index: 60;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100vw - 40px);
+  padding: 10px 14px;
+  border: 1px solid #d4d9d3;
+  border-radius: 10px;
+  background: #fff;
+  color: #314339;
+  box-shadow: 0 4px 18px #00000012;
+  font-size: 12px;
+}
+.workspace-save-state button { cursor: pointer; padding: 4px 8px; }
+.workspace-app button:disabled { cursor: not-allowed; opacity: .5; }

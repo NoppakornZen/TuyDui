@@ -31,15 +31,6 @@ export default function AuthCallbackPage() {
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#0A0D12',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      color: '#fff'
-    }}>
-      กำลังเข้าสู่ระบบ...
-    </div>
+    <div className="app-loading" role="status"><div className="spinner" /><p>Signing in...</p></div>
   );
 }

@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { googleName, loadOwnProfile, profileLabel, saveOwnProfile, uploadAvatar } from '../../src/lib/profile';
 import Avatar from '../components/Avatar';
-import './profile.css';
+import Icon from '../components/Icon';
+import './profile-design.css';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -37,7 +38,7 @@ export default function ProfilePage() {
       setDisplayName(profile.display_name);
       setAvatarUrl(profile.avatar_url);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'โหลดโปรไฟล์ไม่ได้');
+      setError(err instanceof Error ? err.message : 'Could not load your profile.');
     } finally {
       setLoading(false);
     }
@@ -53,7 +54,7 @@ export default function ProfilePage() {
       await saveOwnProfile({ nickname, displayName, avatarUrl });
       setSaved(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'บันทึกไม่ได้');
+      setError(err instanceof Error ? err.message : 'Could not save your profile.');
     } finally {
       setSaving(false);
     }
@@ -69,7 +70,7 @@ export default function ProfilePage() {
       setAvatarUrl(await uploadAvatar(file));
       setSaved(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'อัปโหลดรูปไม่ได้');
+      setError(err instanceof Error ? err.message : 'Could not upload the image.');
     } finally {
       setUploading(false);
     }
@@ -79,66 +80,62 @@ export default function ProfilePage() {
 
   return (
     <main className="profile-app">
-      <header className="profile-topbar">
-        <a className="profile-brand" href="/projects">TuyDui</a>
-        <a className="profile-back" href="/projects">กลับไปโปรเจกต์</a>
-      </header>
-
       <div className="profile-wrap">
-        <p className="profile-kicker">ACCOUNT</p>
-        <h1>โปรไฟล์</h1>
+        <a className="profile-back" href="/projects"><Icon name="back" size={15} />Back to projects</a>
+        <h1>Profile</h1>
+        <p className="profile-intro">The name and photo your team sees.</p>
 
         {loading ? (
-          <p className="profile-status">กำลังโหลด...</p>
+          <p className="profile-status">Loading...</p>
         ) : (
           <form className="profile-card" onSubmit={onSubmit}>
             <div className="profile-identity">
               <label className="profile-photo">
                 <Avatar className="profile-mark" label={shown} url={avatarUrl} />
                 <input type="file" accept="image/*" onChange={onAvatar} disabled={uploading} />
-                <span className="profile-photo-label">{uploading ? 'กำลังอัปโหลด...' : 'เปลี่ยนรูป'}</span>
+                <span className="profile-photo-label">{uploading ? 'Uploading...' : 'Change photo'}</span>
               </label>
               <div>
-                <strong>{shown || 'ยังไม่ได้ตั้งชื่อ'}</strong>
+                <strong>{shown || 'No name set'}</strong>
                 <small>{email}</small>
               </div>
             </div>
 
             <label htmlFor="nickname">
-              ชื่อเล่น
+              Nickname
               <input
                 id="nickname"
                 value={nickname}
                 maxLength={40}
                 onChange={(event) => { setNickname(event.target.value); setSaved(false); }}
-                placeholder="ชื่อที่เห็นในวงกลมสมาชิก"
+                placeholder="Name shown in member avatars"
               />
             </label>
 
             <label htmlFor="display-name">
-              ชื่อแสดง
+              Display name
               <input
                 id="display-name"
                 value={displayName}
                 maxLength={80}
                 onChange={(event) => { setDisplayName(event.target.value); setSaved(false); }}
-                placeholder={accountName || 'ชื่อเต็ม'}
+                placeholder={accountName || 'Full name'}
               />
             </label>
 
             <p className="profile-note">
               {accountName
-                ? `ถ้าเว้นว่างทั้งสองช่อง โปรเจกต์จะใช้ชื่อจาก Google: ${accountName}`
-                : 'ถ้าเว้นว่างทั้งสองช่อง โปรเจกต์จะใช้ชื่อจากบัญชี Google'}
+                ? `Leave both fields blank to use your Google name: ${accountName}`
+                : 'Leave both fields blank to use your Google account name.'}
             </p>
 
-            {error && <p className="profile-error">{error}</p>}
+            {error && <p className="profile-error" role="alert">{error}</p>}
 
             <div className="profile-actions">
               <button className="button-primary" type="submit" disabled={saving}>
-                {saving ? 'กำลังบันทึก...' : 'บันทึก'}
+                <Icon name="check" size={16} />{saving ? 'Saving...' : 'Save profile'}
               </button>
-              {saved && <span>บันทึกแล้ว</span>}
+              {saved && <span role="status">Saved</span>}
             </div>
           </form>
         )}

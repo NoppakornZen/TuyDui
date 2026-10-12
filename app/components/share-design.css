@@ -1,0 +1,40 @@
+.ui-dialog.share-modal { width: min(640px, calc(100% - 32px)); }
+.share-modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding: 24px 28px; border-bottom: 1px solid var(--line); }
+.share-modal-header h2 { font-size: 20px; font-weight: 650; margin: 0 0 5px; letter-spacing: -.4px; }
+.share-modal-header p { color: var(--muted); font-size: 12px; margin: 0; }
+.share-modal-close { width: 32px; height: 32px; border: 1px solid var(--line); border-radius: 8px; padding: 0; background: white; color: var(--muted); }
+.share-modal-close:hover { background: var(--canvas); }
+.share-modal-content { padding: 25px 28px; }
+.share-section { margin-bottom: 28px; }
+.share-section:last-child { margin: 0; }
+.share-section-title { color: var(--ink); font-size: 13px; font-weight: 600; margin: 0 0 12px; }
+.share-section-subtitle { color: var(--muted); font-size: 12px; margin-bottom: 16px; }
+.create-invite-form { display: grid; gap: 15px; }
+.role-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.role-option { background: var(--surface); border: 1px solid var(--line); border-radius: 5px; padding: 16px; text-align: left; color: var(--ink); }
+.role-option.selected { background: #efefe8; border-color: #8c9886; }
+.role-option-title { font-size: 12px; font-weight: 600; margin-bottom: 5px; }
+.role-option-desc { color: var(--muted); font-size: 11px; line-height: 1.7; }
+.invite-link-card { border-top: 1px solid var(--line); padding: 18px 0; margin-top: 12px; }
+.invite-link-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.invite-role-badge { display: inline-flex; align-items: center; padding: 4px 8px; border-radius: 5px; font-size: 10px; font-weight: 600; color: var(--muted); background: var(--canvas); }
+.invite-role-badge.editor { color: #436491; background: #edf3fd; }
+.invite-role-badge.owner { color: var(--accent); background: var(--accent-soft); }
+.delete-invite-btn { color: var(--red); background: none; border: 0; font-size: 11px; padding: 4px; }
+.invite-link-url { display: flex; gap: 8px; border: 1px solid var(--line); padding: 8px 10px; border-radius: 8px; background: var(--canvas); }
+.invite-link-url input { width: 100%; min-width: 0; padding: 0; border: 0; background: none; color: var(--muted); font-size: 11px; }
+.copy-link-btn { border: 1px solid var(--line); border-radius: 6px; background: white; color: var(--ink); font-size: 10px; padding: 5px 9px; white-space: nowrap; }
+.copy-link-btn.copied { color: var(--green); background: var(--green-soft); }
+.invite-link-meta { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; color: var(--muted); font-size: 10px; margin-top: 10px; }
+.members-list { display: grid; gap: 8px; }
+.member-card { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.member-avatar { width: 33px; height: 33px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-size: 12px; font-weight: 600; object-fit: cover; flex-shrink: 0; }
+.member-info { flex: 1; min-width: 0; }
+.member-name { font-size: 12px; font-weight: 600; overflow-wrap: anywhere; }
+.member-email { font-size: 10px; color: var(--muted); margin-top: 2px; }
+.member-role-select { border: 1px solid var(--line); padding: 6px 8px; border-radius: 6px; background: white; font-size: 11px; }
+.remove-member-btn { border: 0; background: none; color: var(--muted); padding: 5px; }
+.remove-member-btn:hover { color: var(--red); }
+.empty-members { color: var(--muted); border-top: 1px solid var(--line); padding: 22px 0; font-size: 12px; }
+.share-loading { display: grid; place-items: center; padding: 50px; }
+@media (max-width: 700px) { .share-modal-header, .share-modal-content { padding: 22px; } .role-selector { grid-template-columns: 1fr; } .member-card { flex-wrap: wrap; } }

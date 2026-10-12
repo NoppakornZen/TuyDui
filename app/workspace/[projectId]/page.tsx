@@ -4,25 +4,17 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import ShareModal from '../../components/ShareModal';
 import ProjectPeople from '../../components/ProjectPeople';
-import { googleName, loadOwnProfile, profileLabel } from '../../../src/lib/profile';
-import './workspace-redesign.css';
-import './workspace-dashboard.css';
+import { googleName, loadOwnProfile, loadProfiles, profileLabel } from '../../../src/lib/profile';
+import { authenticatedFetch } from '../../../src/lib/authenticated-fetch';
+import { SAMPLE_BRIEF } from '../../../src/lib/sample-brief';
+import { applyReviewToScope, mergeAppliedScope, emptyWorkspace, normalizeWorkspace, requirementForAI, type MapNode, type Edge, type RequirementRow, type ChangeRow, type StoredDocument, type WorkspaceSnapshot, type ApprovedScope } from '../../../src/domain/workspace';
+import { loadWorkspace, saveWorkspace, confirmWorkspaceBaseline, approveWorkspaceChange, WorkspaceSaveQueue, type WorkspaceRecord } from '../../../src/services/workspace-store';
+import Icon, { type IconName } from '../../components/Icon';
+import Dialog from '../../components/Dialog';
+import './workspace-design.css';
 
-type NodeKind = 'project' | 'work_area';
-type MapNode = { id: string; title: string; kind: NodeKind; owner: string; requirements: number; x: number; y: number; impacted?: boolean; requirementIds: string[]; summary?: string };
-type Edge = { id: string; from: string; to: string };
 type WorkspaceTab = 'overview' | 'map' | 'requirements' | 'changes' | 'history';
-type RequirementRow = { id: string; title: string; description: string; area: string; owner: string; source: string; status: string; quote?: string; page?: number; documentId?: string; clarity?: string };
-type ChangeRow = { id: string; title: string; type: string; detail: string; decision: string; explanation?: string; confidence?: string };
-type StoredDocument = { id: string; name: string; version: number; pageCount: number; uploadedAt: string };
 type SuggestedNode = { tempId: string; parentTempId?: string; title: string; summary?: string; category: string; requirementIds: string[]; suggestedRole?: string; suggestedMemberId?: string };
-
-const team = [
-  { id: 'zen', name: 'Zen', role: 'Backend' },
-  { id: 'pee', name: 'Pee', role: 'Frontend' },
-  { id: 'arm', name: 'Arm', role: 'Design' },
-  { id: 'nan', name: 'Nan', role: 'Growth' },
-];
 
 const initialNodes: MapNode[] = [
   { id: 'root', title: 'Project', kind: 'project', owner: 'Project team', requirements: 0, x: 640, y: 280, requirementIds: [] },
@@ -33,8 +25,11 @@ const initialChanges: ChangeRow[] = [];
 
 export default function WorkspacePage() {
   const params = useParams();
+  return <ProjectWorkspace key={String(params.projectId)} projectId={String(params.projectId)} />;
+}
+
+function ProjectWorkspace({ projectId }: { projectId: string }) {
   const router = useRouter();
-  const projectId = params.projectId as string;
 
   const [loading, setLoading] = useState(true);
   const [projectTitle, setProjectTitle] = useState('');
@@ -43,47 +38,105 @@ export default function WorkspacePage() {
   const [edges, setEdges] = useState(initialEdges);
   const [selectedId, setSelectedId] = useState('root');
   const [connectMode, setConnectMode] = useState(false);
+  const [panMode, setPanMode] = useState(false);
+  const [adding, setAdding] = useState<'node' | 'requirement' | null>(null);
+  const [newItemTitle, setNewItemTitle] = useState('');
   const [connectSource, setConnectSource] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [drag, setDrag] = useState<{ id: string; x: number; y: number; nodeX: number; nodeY: number } | null>(null);
   const [hand, setHand] = useState<{ x: number; y: number; panX: number; panY: number } | null>(null);
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('overview');
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [requirements, setRequirements] = useState<RequirementRow[]>(initialRequirements);
   const [changes, setChanges] = useState<ChangeRow[]>(initialChanges);
   const [history, setHistory] = useState<string[]>([]);
   const [baselineConfirmed, setBaselineConfirmed] = useState(false);
+  const [showBaselinePrompt, setShowBaselinePrompt] = useState(false);
+  const baselinePromptedRef = useRef(false);
   const [nodeNotes, setNodeNotes] = useState<Record<string, string>>({});
   const [clientMessage, setClientMessage] = useState('');
   const [changeFile, setChangeFile] = useState<File | null>(null);
   const [pendingReview, setPendingReview] = useState<ChangeReview | null>(null);
+  const reviewedScopeRef = useRef('');
   const [copied, setCopied] = useState(false);
   const [briefText, setBriefText] = useState('');
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [documents, setDocuments] = useState<StoredDocument[]>([]);
   const [mapProposal, setMapProposal] = useState<SuggestedNode[] | null>(null);
   const [aiBusy, setAiBusy] = useState<'change' | 'brief' | 'pdf' | 'map' | null>(null);
+  const [aiStage, setAiStage] = useState('');
+  const aiElapsed = useElapsedSeconds(aiBusy !== null);
   const [aiError, setAiError] = useState('');
   const [briefProposals, setBriefProposals] = useState<RequirementRow[]>([]);
   const [showShareModal, setShowShareModal] = useState(false);
   const [ownerName, setOwnerName] = useState('');
   const [ownerAvatar, setOwnerAvatar] = useState('');
+  const [canEdit, setCanEdit] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
+  const [cloudReady, setCloudReady] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [saveError, setSaveError] = useState('');
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'pending'>('saved');
+  const [mutationBusy, setMutationBusy] = useState(false);
+  const [approvedScope, setApprovedScope] = useState<ApprovedScope | null>(null);
+  const [aiMembers, setAiMembers] = useState<Array<{ id: string; name: string; role: string }>>([]);
+  const [reviewTarget, setReviewTarget] = useState<ChangeRow | null>(null);
+  const [reviewPrice, setReviewPrice] = useState('');
+  const [reviewTime, setReviewTime] = useState('');
+  const [reviewDeadline, setReviewDeadline] = useState('');
+  const [reviewExplanation, setReviewExplanation] = useState('');
+  const [reviewBusy, setReviewBusy] = useState(false);
+  const [reviewLink, setReviewLink] = useState('');
+  const [reviewLinkCopied, setReviewLinkCopied] = useState(false);
+  const [changeReviews, setChangeReviews] = useState<Record<string, Array<{ status: string; token: string }>>>({});
+  const queueRef = useRef<WorkspaceSaveQueue | null>(null);
+  const lastSavedRef = useRef('');
+  const operationRef = useRef(false);
+  const loadingRef = useRef(false);
+  const cloudVersionRef = useRef(0);
+  const snapshot = useMemo<WorkspaceSnapshot>(() => ({ nodes, edges, requirements, changes, history, nodeNotes, documents, briefProposals }), [nodes, edges, requirements, changes, history, nodeNotes, documents, briefProposals]);
+  const snapshotRef = useRef(snapshot);
+  snapshotRef.current = snapshot;
   const canvasRef = useRef<HTMLDivElement>(null);
+  const inspectorRef = useRef<HTMLElement>(null);
+  const detailsButtonRef = useRef<HTMLButtonElement>(null);
+  const nodeMovedRef = useRef(false);
   const selected = nodes.find((node) => node.id === selectedId) ?? nodes[0];
   const pendingChanges = changes.filter((change) => change.decision === 'Pending');
   const workAreas = nodes.filter((node) => node.kind === 'work_area');
   const assigned = requirements.filter((row) => row.owner !== 'Unassigned').length;
   const coverage = requirements.length === 0 ? 0 : Math.round((assigned / requirements.length) * 100);
   const latestDocument = documents[documents.length - 1];
-  const linkedRequirements = requirements.filter((row) => selected.requirementIds.includes(row.id));
+  const linkedRequirements = requirements.filter((row) => selected?.requirementIds.includes(row.id));
+  const editable = canEdit && !mutationBusy;
+  const selectedIsApproved = selected.kind === 'project' ? baselineConfirmed : Boolean(approvedScope?.nodes.some((node) => node.id === selected.id));
+
+  function showSnapshot(data: WorkspaceSnapshot) {
+    snapshotRef.current = data;
+    setNodes(data.nodes); setEdges(data.edges); setRequirements(data.requirements);
+    setChanges(data.changes); setHistory(data.history); setNodeNotes(data.nodeNotes);
+    setDocuments(data.documents); setBriefProposals(data.briefProposals);
+  }
+
+  function showRecord(record: WorkspaceRecord) {
+    cloudVersionRef.current = record.version;
+    lastSavedRef.current = JSON.stringify(record.snapshot);
+    if (queueRef.current) queueRef.current.version = record.version;
+    showSnapshot(record.snapshot);
+    setApprovedScope(record.approved_scope);
+    setBaselineConfirmed(record.approved_scope !== null);
+  }
 
   useEffect(() => {
     loadProject();
   }, [projectId]);
 
   async function loadProject() {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     try {
-      setLoading(true);
+      setLoading(true); setLoadError(''); setCloudReady(false);
       const { supabase } = await import('../../../src/lib/supabase');
 
       const { data: { user } } = await supabase.auth.getUser();
@@ -98,62 +151,143 @@ export default function WorkspacePage() {
         .eq('id', projectId)
         .maybeSingle();
 
-      if (error || !project) {
+      if (error) throw error;
+      if (!project) {
         router.push('/projects');
         return;
       }
 
       setProjectTitle(project.name);
       setClientName(project.client_name);
-      setBaselineConfirmed(!!project.baseline_confirmed_at);
       const owner = await ownerIdentity(project.owner_id, user.id);
       setOwnerName(owner.name);
       setOwnerAvatar(owner.avatar);
 
-      const storageKey = `briefdiff-project-${projectId}`;
-      const saved = window.localStorage.getItem(storageKey);
-      if (saved) {
-        try {
-          const data = JSON.parse(saved) as { nodes?: MapNode[]; edges?: Edge[]; zoom?: number; pan?: { x: number; y: number }; requirements?: Array<RequirementRow & { description?: string }>; changes?: ChangeRow[]; history?: string[]; nodeNotes?: Record<string, string>; documents?: StoredDocument[] };
-          if (data.nodes?.length) setNodes(data.nodes.map((node) => ({ ...node, requirementIds: node.requirementIds ?? [], owner: node.kind === 'project' ? owner.name : node.owner })));
-          if (data.edges) setEdges(data.edges);
-          if (data.zoom) setZoom(data.zoom);
-          if (data.pan) setPan(data.pan);
-          if (data.requirements) setRequirements(data.requirements.map((row) => ({ ...row, description: row.description || row.title })));
-          if (data.changes) setChanges(data.changes);
-          if (data.history) setHistory(data.history);
-          if (data.nodeNotes) setNodeNotes(data.nodeNotes);
-          if (data.documents) setDocuments(data.documents);
-        } catch { window.localStorage.removeItem(storageKey); }
-      } else {
-        setNodes([{ id: 'root', title: project.name, kind: 'project', owner: owner.name, requirements: 0, x: 640, y: 280, requirementIds: [] }]);
+      const ownerAccess = project.owner_id === user.id;
+      let editAccess = ownerAccess;
+      if (!ownerAccess) {
+        const { data: member, error: memberError } = await supabase.from('project_members').select('role').eq('project_id', projectId).eq('user_id', user.id).not('accepted_at', 'is', null).maybeSingle();
+        if (memberError) throw memberError;
+        editAccess = member?.role === 'editor' || member?.role === 'owner';
+      }
+      setIsOwner(ownerAccess); setCanEdit(editAccess);
+      try {
+        const { data: memberRows } = await supabase.from('project_members').select('user_id, role').eq('project_id', projectId).not('accepted_at', 'is', null);
+        const memberIds = [...new Set([project.owner_id as string, ...(memberRows ?? []).map((row) => row.user_id as string)])];
+        const profiles = await loadProfiles(memberIds);
+        setAiMembers(memberIds.map((id) => ({
+          id,
+          name: profileLabel(profiles.get(id) ?? null, id === user.id ? googleName(user) || user.email || '' : '') || `Member ${id.slice(0, 4)}`,
+          role: id === project.owner_id ? 'owner' : (memberRows ?? []).find((row) => row.user_id === id)?.role ?? 'editor',
+        })));
+      } catch { setAiMembers([]); }
+      let record = await loadWorkspace(projectId);
+      if (!record && ownerAccess) {
+        const fallback = emptyWorkspace(project.name, owner.name);
+        // Only the owner imports the older device's copy. Keep it as a backup.
+        const legacy = ownerAccess ? window.localStorage.getItem(`briefdiff-project-${projectId}`) : null;
+        const imported = legacy ? normalizeWorkspace(JSON.parse(legacy), fallback) : fallback;
+        record = await saveWorkspace(projectId, imported, 0);
+      }
+      if (!record && !ownerAccess) throw new Error('The project owner needs to open this project on the original device once to move it online.');
+      if (editAccess) {
+        queueRef.current = new WorkspaceSaveQueue(record?.version ?? 0, async (data, version) => {
+          const saved = await saveWorkspace(projectId, data, version);
+          lastSavedRef.current = JSON.stringify(data);
+          cloudVersionRef.current = saved.version;
+          return saved;
+        });
+      }
+      if (record) showRecord(record);
+      else showSnapshot(emptyWorkspace(project.name, owner.name));
+      setCloudReady(true);
+      void loadReviews();
+      // Sample-project onboarding: prefill the demo brief so the first AI
+      // extraction is one click away, then strip the flag from the URL.
+      if (new URLSearchParams(window.location.search).get('sample') === '1' && (record?.snapshot.requirements.length ?? 0) === 0) {
+        setBriefText(SAMPLE_BRIEF);
+        setActiveTab('requirements');
+        router.replace(`/workspace/${projectId}`);
       }
     } catch (err) {
       console.error('Failed to load project:', err);
-      router.push('/projects');
+      setLoadError(err instanceof Error ? err.message : 'Could not load the online workspace.');
     } finally {
+      loadingRef.current = false;
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    if (!projectId || loading) return;
-    const storageKey = `briefdiff-project-${projectId}`;
-    window.localStorage.setItem(storageKey, JSON.stringify({ nodes, edges, zoom, pan, requirements, changes, history, nodeNotes, documents }));
-  }, [nodes, edges, zoom, pan, requirements, changes, history, nodeNotes, documents, projectId, loading]);
+    if (!cloudReady || !canEdit || operationRef.current || JSON.stringify(snapshot) === lastSavedRef.current) return;
+    queueRef.current?.enqueue(snapshot);
+    setSaveStatus('pending');
+    const timer = window.setTimeout(() => { void flushWorkspace().catch(() => undefined); }, 500);
+    return () => window.clearTimeout(timer);
+  }, [snapshot, cloudReady, canEdit]);
 
   useEffect(() => {
+    const warnUnsaved = (event: BeforeUnloadEvent) => {
+      if (canEdit && cloudReady && JSON.stringify(snapshotRef.current) !== lastSavedRef.current) {
+        event.preventDefault(); event.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', warnUnsaved);
+    return () => window.removeEventListener('beforeunload', warnUnsaved);
+  }, [canEdit, cloudReady]);
+
+  useEffect(() => {
+    if (!cloudReady) return;
+    let stopped = false;
+    const refresh = async () => {
+      if (document.visibilityState !== 'visible' || operationRef.current || JSON.stringify(snapshotRef.current) !== lastSavedRef.current) return;
+      try {
+        const record = await loadWorkspace(projectId);
+        if (!stopped && record && record.version > cloudVersionRef.current && !operationRef.current && JSON.stringify(snapshotRef.current) === lastSavedRef.current) {
+          showRecord(record); setPendingReview(null); setSaveStatus('saved');
+        }
+      } catch { /* Keep the displayed work; the next save shows an actionable error. */ }
+    };
+    const timer = window.setInterval(() => void refresh(), 15000);
+    window.addEventListener('focus', refresh);
+    return () => { stopped = true; window.clearInterval(timer); window.removeEventListener('focus', refresh); };
+  }, [cloudReady, projectId]);
+
+  async function flushWorkspace() {
+    const queue = queueRef.current;
+    if (!queue) return;
+    if (JSON.stringify(snapshotRef.current) !== lastSavedRef.current) queue.enqueue(snapshotRef.current);
+    setSaveStatus('saving'); setSaveError('');
+    try {
+      await queue.flush();
+      setSaveStatus('saved');
+    } catch (error) {
+      setSaveStatus('pending');
+      setSaveError(error instanceof Error ? error.message : 'Could not save your work. Please try again.');
+      throw error;
+    }
+  }
+
+  function downloadUnsavedWork() {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(snapshotRef.current, null, 2)], { type: 'application/json' }));
+    const link = document.createElement('a'); link.href = url; link.download = `workspace-${projectId}.json`; link.click(); URL.revokeObjectURL(url);
+  }
+
+  useEffect(() => {
+    if (activeTab !== 'map' || loading || loadError) return;
     const viewport = canvasRef.current;
     if (!viewport) return;
 
-    const preventScroll = (e: WheelEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
+    const onMapWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.deltaY === 0) return;
+      setZoom((current) => Math.max(0.25, Math.min(2, current + (event.deltaY < 0 ? .08 : -.08))));
     };
 
-    viewport.addEventListener('wheel', preventScroll, { passive: false });
-    return () => viewport.removeEventListener('wheel', preventScroll);
-  }, []);
+    viewport.addEventListener('wheel', onMapWheel, { passive: false });
+    return () => viewport.removeEventListener('wheel', onMapWheel);
+  }, [activeTab, loading, loadError]);
 
   const nodeById = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes]);
   const mapSize = useMemo(() => ({
@@ -162,8 +296,40 @@ export default function WorkspacePage() {
   }), [nodes]);
   const updateZoom = (next: number) => setZoom(Math.max(0.25, Math.min(2, next)));
 
+
+  function fitMap() {
+    const viewport = canvasRef.current;
+    if (!viewport || nodes.length === 0) return;
+    const left = Math.min(...nodes.map((node) => node.x));
+    const top = Math.min(...nodes.map((node) => node.y));
+    const width = Math.max(...nodes.map((node) => node.x + CARD_W)) - left;
+    const height = Math.max(...nodes.map((node) => node.y + CARD_H)) - top;
+    const scale = Math.max(.25, Math.min(1, (viewport.clientWidth - 72) / width, (viewport.clientHeight - 96) / height));
+    setZoom(scale);
+    setPan({ x: (viewport.clientWidth - width * scale) / 2 - left * scale, y: (viewport.clientHeight - height * scale) / 2 - top * scale });
+  }
+
+  useEffect(() => {
+    if (activeTab !== 'map' || loading) return;
+    const frame = requestAnimationFrame(fitMap);
+    return () => cancelAnimationFrame(frame);
+  }, [activeTab, loading, nodes.length, detailsOpen]);
+
+  useEffect(() => {
+    if (!detailsOpen || !window.matchMedia('(max-width: 1000px)').matches) return;
+    const frame = requestAnimationFrame(() => inspectorRef.current?.scrollIntoView({ block: 'start' }));
+    return () => cancelAnimationFrame(frame);
+  }, [detailsOpen, selectedId]);
+
+  function closeDetails() {
+    setDetailsOpen(false);
+    detailsButtonRef.current?.focus({ preventScroll: true });
+  }
+
   function selectNode(id: string) {
+    if (panMode) return;
     if (connectMode) {
+      if (!editable) return;
       if (!connectSource) { setConnectSource(id); return; }
       if (connectSource !== id && !edges.some((edge) => (edge.from === connectSource && edge.to === id) || (edge.from === id && edge.to === connectSource))) {
         setEdges((current) => [...current, { id: `e-${Date.now()}`, from: connectSource, to: id }]);
@@ -171,10 +337,13 @@ export default function WorkspacePage() {
       setConnectMode(false); setConnectSource(null); return;
     }
     setSelectedId(id);
+    if (!nodeMovedRef.current) setDetailsOpen(true);
+    nodeMovedRef.current = false;
   }
 
   function onNodePointerDown(event: React.PointerEvent, node: MapNode) {
-    if (event.button !== 0 || connectMode) return;
+    nodeMovedRef.current = false;
+    if (!editable || event.button !== 0 || connectMode || panMode) return;
     event.stopPropagation();
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
     setDrag({ id: node.id, x: event.clientX, y: event.clientY, nodeX: node.x, nodeY: node.y });
@@ -184,11 +353,12 @@ export default function WorkspacePage() {
     if (!drag) return;
     const dx = (event.clientX - drag.x) / zoom;
     const dy = (event.clientY - drag.y) / zoom;
+    if (Math.abs(event.clientX - drag.x) + Math.abs(event.clientY - drag.y) > 4) nodeMovedRef.current = true;
     setNodes((current) => current.map((node) => node.id === drag.id ? { ...node, x: drag.nodeX + dx, y: drag.nodeY + dy } : node));
   }
 
   function onCanvasPointerDown(event: React.PointerEvent) {
-    if (event.button !== 2) return;
+    if (event.button !== 2 && !(panMode && event.button === 0)) return;
     event.preventDefault();
     setHand({ x: event.clientX, y: event.clientY, panX: pan.x, panY: pan.y });
     canvasRef.current?.setPointerCapture(event.pointerId);
@@ -200,44 +370,57 @@ export default function WorkspacePage() {
   }
 
   function addNode() {
-    const title = window.prompt('Node name', 'New work area')?.trim();
-    if (!title) return;
-    const id = `node-${Date.now()}`;
-    setNodes((current) => [...current, { id, title, kind: 'work_area', owner: 'Unassigned', requirements: 0, x: 720, y: 650, requirementIds: [] }]);
-    setSelectedId(id);
+    if (!editable) return;
+    setNewItemTitle(''); setAdding('node');
   }
 
   function addRequirement() {
-    const title = window.prompt('Requirement name', 'New requirement')?.trim();
-    if (!title) return;
-    const id = `REQ-${String(19 + requirements.length).padStart(3, '0')}`;
-    setRequirements((current) => [...current, { id, title, description: title, area: 'Unassigned', owner: 'Unassigned', source: 'Manual', status: 'Review' }]);
-    setHistory((current) => [`${id} added manually · Just now`, ...current]);
+    if (!editable) return;
+    setNewItemTitle(''); setAdding('requirement');
+  }
+
+  function submitNewItem(event: React.FormEvent) {
+    event.preventDefault();
+    const title = newItemTitle.trim();
+    if (!title || !editable || !adding) return;
+    if (adding === 'node') {
+      const id = `node-${Date.now()}`;
+      setNodes((current) => [...current, { id, title, kind: 'work_area', owner: 'Unassigned', requirements: 0, x: 720, y: 650, requirementIds: [] }]);
+      setSelectedId(id);
+    } else {
+      const id = `REQ-${String(19 + requirements.length).padStart(3, '0')}`;
+      setRequirements((current) => [...current, { id, title, description: title, area: 'Unassigned', owner: 'Unassigned', source: 'Manual', status: 'Review' }]);
+      setHistory((current) => [`${id} added manually · Just now`, ...current]);
+    }
+    setAdding(null); setNewItemTitle('');
   }
 
   async function reviewChange(event: React.FormEvent) {
     event.preventDefault();
     const raw = clientMessage.trim();
-    if ((!raw && !changeFile) || aiBusy) return;
-    if (requirements.length === 0) { setAiError('Add requirements before reviewing a change.'); return; }
+    if ((!raw && !changeFile) || aiBusy || !editable) return;
+    if (!approvedScope) { setAiError('Confirm the baseline before reviewing a change.'); return; }
     setAiBusy('change');
+    setAiStage('Comparing the request with the approved scope');
+    setPendingReview(null);
     setAiError('');
     setCopied(false);
     const context = {
       projectId,
       text: raw,
-      requirements: requirements.map(toRequirement),
-      nodes: nodes.map((node) => ({ id: node.id, title: node.title, summary: node.summary ?? '', requirementIds: node.requirementIds })),
-      members: team,
+      members: aiMembers,
     };
     try {
+      await flushWorkspace();
       const response = changeFile
-        ? await fetch('/api/changes', { method: 'POST', body: (() => { const body = new FormData(); body.set('file', changeFile); body.set('context', JSON.stringify(context)); return body; })() })
-        : await fetch('/api/changes', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(context) });
-      const payload = await response.json().catch(() => ({})) as { data?: ChangeReview; error?: string };
+        ? await authenticatedFetch('/api/changes', { method: 'POST', body: (() => { const body = new FormData(); body.set('file', changeFile); body.set('context', JSON.stringify(context)); return body; })() })
+        : await authenticatedFetch('/api/changes', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(context) });
+      const payload = await response.json().catch(() => ({})) as { data?: ChangeReview; error?: string; workspaceVersion?: number; document?: StoredDocument };
       if (!response.ok || !payload.data) throw new Error(payload.error || 'AI request failed.');
+      if (payload.workspaceVersion !== queueRef.current?.version) throw new Error('The approved scope changed. Reload the project and review the request again.');
       setPendingReview(payload.data);
-      setHistory((current) => [`Change reviewed as ${payload.data!.classification.replace('_', ' ')} · Just now`, ...current]);
+      reviewedScopeRef.current = JSON.stringify(approvedScope);
+      if (payload.document) setDocuments((current) => current.some((item) => item.id === payload.document!.id) ? current : [...current, payload.document!]);
     } catch (error) {
       setAiError(error instanceof Error ? error.message : 'AI request failed.');
     } finally {
@@ -245,34 +428,29 @@ export default function WorkspacePage() {
     }
   }
 
-  function applyReview() {
-    if (!pendingReview || pendingReview.edits.length === 0) return;
+  async function applyReview() {
+    if (!pendingReview || !approvedScope || pendingReview.edits.length === 0 || !editable) return;
+    if (reviewedScopeRef.current !== JSON.stringify(approvedScope)) { setAiError('The approved scope changed. Review the request again.'); return; }
+    operationRef.current = true; setMutationBusy(true); setAiError('');
+    try {
+    await flushWorkspace();
     const source = changeFile?.name || 'Change brief';
-    let nextRequirements = requirements;
-    let nextNodes = nodes.map((node) => ({ ...node, impacted: false }));
-    const nextEdges = [...edges];
-    pendingReview.edits.forEach((edit, index) => {
-      const linked = ensureRequirement(nextRequirements, edit.title, edit.summary, source);
-      nextRequirements = linked.rows;
-      if (edit.action === 'update' && edit.nodeId) {
-        nextNodes = nextNodes.map((node) => node.id === edit.nodeId ? { ...node, title: edit.title, summary: edit.summary, impacted: true, requirementIds: [...new Set([...node.requirementIds, linked.id])] } : node);
-        return;
-      }
-      const parent = nextNodes.find((node) => node.id === edit.parentId) ?? nextNodes[0];
-      const id = `node-${Date.now()}-${index}`;
-      const spot = placeUnder(parent, nextNodes);
-      nextNodes = [...nextNodes, { id, title: edit.title, summary: edit.summary, kind: 'work_area', owner: 'Unassigned', requirements: 1, x: spot.x, y: spot.y, impacted: true, requirementIds: [linked.id] }];
-      nextEdges.push({ id: `e-${id}`, from: parent?.id ?? 'root', to: id });
-    });
-    setRequirements(nextRequirements);
-    setNodes(nextNodes);
-    setEdges(nextEdges);
-    setChanges((current) => [{ id: `change-${Date.now()}`, title: pendingReview.summary, type: pendingReview.magnitude === 'major' ? 'NEW SYSTEM' : 'UPDATED', detail: clientMessage || source, decision: 'Applied to map', explanation: pendingReview.explanation }, ...current]);
-    setHistory((current) => [`Current map updated from the change review · Just now`, ...current]);
+    const idPrefix = crypto.randomUUID();
+    const nextScope = applyReviewToScope(approvedScope, pendingReview, source, idPrefix);
+    const nextDraft = mergeAppliedScope(snapshotRef.current, approvedScope, nextScope);
+    const next: WorkspaceSnapshot = { ...snapshotRef.current, ...nextDraft,
+      changes: [{ id: `change-${idPrefix}`, title: pendingReview.summary, type: pendingReview.magnitude === 'major' ? 'NEW SYSTEM' : 'UPDATED', detail: clientMessage || source, decision: 'Applied to map', explanation: pendingReview.explanation }, ...changes],
+      history: [`Current approved scope updated · ${new Date().toISOString()}`, ...history],
+    };
+    const record = await approveWorkspaceChange(projectId, next, nextScope, pendingReview, queueRef.current!.version);
+    showRecord(record); setSaveStatus('saved');
     setPendingReview(null);
     setClientMessage('');
     setChangeFile(null);
     setActiveTab('map');
+    } catch (error) {
+      setAiError(error instanceof Error ? error.message : 'Could not apply the change.');
+    } finally { operationRef.current = false; setMutationBusy(false); }
   }
 
   async function copyClientMessage() {
@@ -284,8 +462,9 @@ export default function WorkspacePage() {
   async function readBrief(event: React.FormEvent) {
     event.preventDefault();
     const text = briefText.trim();
-    if (!text || aiBusy) return;
+    if (!text || aiBusy || !editable) return;
     setAiBusy('brief');
+    setAiStage('Extracting requirements from the brief');
     setAiError('');
     try {
       const extracted = await runAI<ExtractedRequirement[]>({
@@ -313,14 +492,18 @@ export default function WorkspacePage() {
 
   async function readPdf(event: React.FormEvent) {
     event.preventDefault();
-    if (!pdfFile || aiBusy) return;
+    if (!pdfFile || aiBusy || !editable) return;
     setAiBusy('pdf');
+    setAiStage('Uploading and reading the PDF');
     setAiError('');
     const body = new FormData();
     body.set('file', pdfFile);
     body.set('projectId', projectId);
     try {
-      const response = await fetch('/api/documents', { method: 'POST', body });
+      const response = await authenticatedFetch('/api/documents', {
+        method: 'POST',
+        body,
+      });
       const payload = await response.json().catch(() => ({})) as { error?: string; document?: StoredDocument; data?: ExtractedRequirement[] };
       if (payload.document) setDocuments((current) => current.some((item) => item.id === payload.document!.id) ? current : [...current, payload.document!]);
       if (!response.ok || !payload.data || !payload.document) throw new Error(payload.error || 'Could not read the PDF.');
@@ -343,6 +526,7 @@ export default function WorkspacePage() {
       setBriefProposals(rows);
       setHistory((current) => [`V${document.version} stored. AI proposed ${rows.length} requirements · Just now`, ...current]);
       setPdfFile(null);
+      setAiStage('Building the project map');
       await drawMap(projectTitle, next);
     } catch (error) {
       setAiError(error instanceof Error ? error.message : 'AI request failed.');
@@ -352,12 +536,14 @@ export default function WorkspacePage() {
   }
 
   function editProposal(id: string, patch: Partial<RequirementRow>) {
+    if (!editable) return;
     setBriefProposals((current) => current.map((row) => row.id === id ? { ...row, ...patch } : row));
   }
 
   function acceptBriefProposals() {
+    if (!editable) return;
     if (briefProposals.length === 0) return;
-    setRequirements((current) => [...current, ...briefProposals.filter((item) => !current.some((existing) => existing.id === item.id))]);
+    setRequirements((current) => [...current.filter((existing) => !briefProposals.some((item) => existing.id === item.id)), ...briefProposals]);
     setHistory((current) => [`${briefProposals.length} proposed requirements added for review · Just now`, ...current]);
     setBriefProposals([]);
     setBriefText('');
@@ -369,21 +555,26 @@ export default function WorkspacePage() {
       task: 'suggest_project_structure',
       projectId,
       requirements: rows.map(toRequirement),
-      members: team,
+      members: aiMembers,
     });
     if (suggested.length === 0) throw new Error('The model did not suggest any work areas.');
-    const laid = layoutFromStructure(title, suggested, team, rows.map((row) => row.id));
+    const laid = layoutFromStructure(title, suggested, aiMembers, rows.map((row) => row.id));
     setNodes(laid.nodes);
     setEdges(laid.edges);
     setSelectedId('root');
     setMapProposal(null);
     setActiveTab('map');
     setHistory((current) => [`Project map built with ${laid.nodes.length - 1} work areas · Just now`, ...current]);
+    if (!baselineConfirmed && isOwner && !baselinePromptedRef.current) {
+      baselinePromptedRef.current = true;
+      setShowBaselinePrompt(true);
+    }
   }
 
   async function buildMap() {
-    if (requirements.length === 0 || aiBusy) return;
+    if (requirements.length === 0 || aiBusy || !editable) return;
     setAiBusy('map');
+    setAiStage('Creating the project map');
     setAiError('');
     try {
       await drawMap(projectTitle, requirements);
@@ -394,83 +585,257 @@ export default function WorkspacePage() {
     }
   }
 
-  function decideChange(id: string, decision: string) {
-    setChanges((current) => current.map((change) => change.id === id ? { ...change, decision } : change));
-    setHistory((current) => [`${changes.find((change) => change.id === id)?.title ?? 'Change'} marked ${decision} · Just now`, ...current]);
+  function decideChange(id: string, commercialDecision: string) {
+    if (!editable) return;
+    setChanges((current) => current.map((change) => change.id === id ? { ...change, commercialDecision } : change));
+    setHistory((current) => [`${changes.find((change) => change.id === id)?.title ?? 'Change'} marked ${commercialDecision} · ${new Date().toISOString()}`, ...current]);
   }
 
-  function confirmBaseline() {
-    if (baselineConfirmed) { window.alert('Baseline V1 is already confirmed and cannot be edited.'); return; }
-    setBaselineConfirmed(true);
-    setHistory((current) => ['Baseline V1 confirmed · Just now', ...current]);
+  async function loadReviews() {
+    try {
+      const response = await authenticatedFetch(`/api/reviews?projectId=${projectId}`);
+      const payload = await response.json().catch(() => ({})) as { data?: Array<{ changeId: string; token: string; status: string }> };
+      if (!response.ok || !payload.data) return;
+      const grouped: Record<string, Array<{ status: string; token: string }>> = {};
+      for (const row of payload.data) {
+        if (!row.changeId) continue;
+        grouped[row.changeId] = [...(grouped[row.changeId] ?? []), { status: row.status, token: row.token }];
+      }
+      setChangeReviews(grouped);
+    } catch { /* Review status badges are optional; the page still works without them. */ }
   }
 
-  if (loading) {
-    return (
-      <main className="workspace-app">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', flexDirection: 'column', gap: '24px' }}>
-          <div className="spinner" style={{ width: '48px', height: '48px', border: '4px solid rgba(255,255,255,0.1)', borderTopColor: '#FF6B35', borderRadius: '50%' }} />
-          <p style={{ color: 'rgba(255,255,255,0.6)' }}>กำลังโหลดโปรเจกต์...</p>
-        </div>
-      </main>
-    );
+  function openReviewDialog(change: ChangeRow) {
+    if (!editable) return;
+    setReviewTarget(change);
+    setReviewPrice('');
+    setReviewTime('');
+    setReviewDeadline('');
+    setReviewExplanation('');
+    setReviewLink('');
+    setReviewLinkCopied(false);
+    setAiError('');
   }
+
+  async function draftReviewExplanation() {
+    if (!reviewTarget || reviewBusy) return;
+    setReviewBusy(true);
+    setAiError('');
+    try {
+      const price = reviewPrice.trim() ? Number(reviewPrice) : undefined;
+      const explanation = await runAI<string>({
+        task: 'draft_change_explanation',
+        change: {
+          id: reviewTarget.id,
+          projectId,
+          rawRequest: reviewTarget.detail,
+          summary: reviewTarget.title,
+          classification: reviewTarget.type === 'NEW SYSTEM' ? 'new_scope' : 'modified',
+          price: Number.isFinite(price) ? price : undefined,
+          newDeadline: reviewDeadline || undefined,
+        },
+        existingScopeSummary: approvedScope?.requirements.map((row) => row.title).join('; ') ?? '',
+      });
+      setReviewExplanation(explanation);
+    } catch (error) {
+      setAiError(error instanceof Error ? error.message : 'AI request failed.');
+    } finally {
+      setReviewBusy(false);
+    }
+  }
+
+  async function publishReview() {
+    if (!reviewTarget || reviewBusy || !reviewExplanation.trim()) return;
+    setReviewBusy(true);
+    setAiError('');
+    try {
+      await flushWorkspace();
+      const response = await authenticatedFetch('/api/reviews', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          projectId,
+          changeId: reviewTarget.id,
+          rawRequest: reviewTarget.detail,
+          summary: reviewTarget.title,
+          classification: reviewTarget.type === 'NEW SYSTEM' ? 'new_scope' : 'modified',
+          clientExplanation: reviewExplanation.trim(),
+          priceThb: reviewPrice.trim() ? Number(reviewPrice) : null,
+          extraTimeText: reviewTime.trim(),
+          newDeadline: reviewDeadline || null,
+        }),
+      });
+      const payload = await response.json().catch(() => ({})) as { data?: { token: string; path: string }; error?: string };
+      if (!response.ok || !payload.data) throw new Error(payload.error || 'Could not create the client review link.');
+      setReviewLink(`${window.location.origin}${payload.data.path}`);
+      setHistory((current) => [`Client review link sent for ${reviewTarget.title} · ${new Date().toISOString()}`, ...current]);
+      void loadReviews();
+    } catch (error) {
+      setAiError(error instanceof Error ? error.message : 'Could not create the client review link.');
+    } finally {
+      setReviewBusy(false);
+    }
+  }
+
+  async function copyReviewLink() {
+    if (!reviewLink) return;
+    await navigator.clipboard.writeText(reviewLink);
+    setReviewLinkCopied(true);
+  }
+
+  async function confirmBaseline() {
+    if (baselineConfirmed || !isOwner || !editable || aiBusy) return;
+    if (requirements.length === 0) { setAiError('Add requirements before confirming the baseline.'); return; }
+    operationRef.current = true; setMutationBusy(true); setAiError('');
+    try {
+      await flushWorkspace();
+      showRecord(await confirmWorkspaceBaseline(projectId, queueRef.current!.version));
+      setSaveStatus('saved');
+      setShowBaselinePrompt(false);
+    } catch (error) { setAiError(error instanceof Error ? error.message : 'Could not confirm the baseline.'); }
+    finally { operationRef.current = false; setMutationBusy(false); }
+  }
+
+  const tabItems: Array<{ id: WorkspaceTab; icon: IconName; label: string; count?: number }> = [
+    { id: 'overview', icon: 'grid', label: 'Overview' },
+    { id: 'map', icon: 'map', label: 'Project Map' },
+    { id: 'requirements', icon: 'list', label: 'Requirements', count: requirements.length },
+    { id: 'changes', icon: 'changes', label: 'Changes', count: pendingChanges.length },
+    { id: 'history', icon: 'history', label: 'Activity' },
+  ];
+  const tabTitle = { overview: 'Project overview', map: 'Project Map', requirements: 'Brief and requirements', changes: 'Review scope changes', history: 'Project activity' }[activeTab];
+  const tabDescription = { overview: 'Scope, responsibilities, and pending decisions in one place.', map: 'See how your work connects. Click a node for details.', requirements: 'Import a brief, review AI suggestions, and add requirements to your project.', changes: 'Compare new requests with the agreed scope before taking on more work.', history: 'Review requirements, proposals, and team decisions.' }[activeTab];
+
+  if (loading) return <main className="workspace-app"><div className="app-loading" role="status"><div className="spinner" /><p>Opening project...</p></div></main>;
+  if (loadError) return <main className="workspace-app"><div className="workspace-load-error" role="alert"><h2>Could not load the project</h2><p>{loadError}</p><button className="button-primary" onClick={loadProject}>Try again</button><a href="/projects">Back to projects</a></div></main>;
 
   return (
     <main className="workspace-app">
-      <header className="workspace-topbar"><a className="workspace-brand" href="/projects">TuyDui</a><div className="workspace-crumb">Projects <b>/</b> <strong>{projectTitle}</strong></div><ProjectPeople projectId={projectId} /><button className="button-light" style={{ marginRight: '16px', display: 'flex', alignItems: 'center', gap: '8px' }} onClick={() => setShowShareModal(true)}><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 11v2a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h2M10 1h6v6M7 11l9-9"/></svg>Share</button><div className="workspace-account"><span>{clientName}</span><b>{clientName[0] || 'C'}</b></div></header>
-      <div className="workspace-layout">
-        <aside className="workspace-sidebar"><div className="sidebar-eyebrow">PROJECT WORKSPACE</div><h1>{projectTitle}</h1><p>{latestDocument ? `V${latestDocument.version} · ${latestDocument.name}` : 'No brief yet'}</p><nav>{([['overview','▦','Overview',''],['map','⌘','Project map',''],['requirements','≡','Requirements',String(requirements.length)],['changes','↗','Changes',String(pendingChanges.length)],['history','◷','History','']] as const).map(([tab, icon, label, count]) => <button key={tab} className={activeTab === tab ? 'side-active' : ''} onClick={() => setActiveTab(tab)}>{icon} <span>{label}</span>{count && <em className={tab === 'changes' ? 'danger' : ''}>{count}</em>}</button>)}</nav><div className="sidebar-baseline"><span className="check">{baselineConfirmed ? '✓' : '–'}</span><div><strong>{baselineConfirmed ? 'Baseline V1' : 'Baseline'}</strong><small>{baselineConfirmed ? 'Confirmed' : 'Not confirmed'}</small></div></div></aside>
-        <section className="workspace-main"><div className="workspace-header"><div><div className="workspace-kicker"><span /> ACTIVE PROJECT</div><h2>{activeTab === 'map' ? 'Project map' : activeTab === 'overview' ? projectTitle : activeTab === 'requirements' ? 'Requirements' : activeTab === 'changes' ? 'Change review' : 'Project history'}</h2><p>{activeTab === 'map' ? `${requirements.length} requirements · ${workAreas.length} work areas · ${pendingChanges.length} open changes` : latestDocument ? `${latestDocument.pageCount} pages in the latest brief` : 'Send a PDF brief to start'}</p></div>{activeTab === 'map' && <div className="workspace-actions"><button className="button-light" onClick={() => updateZoom(zoom - .1)}>−</button><span className="zoom-readout">{Math.round(zoom * 100)}%</span><button className="button-light" onClick={() => updateZoom(zoom + .1)}>＋</button><button className={`button-light connect ${connectMode ? 'active' : ''}`} onClick={() => { setConnectMode((value) => !value); setConnectSource(null); }}>{connectMode ? 'Select nodes' : '↗ Connect'}</button><button className="button-light" type="button" onClick={buildMap} disabled={aiBusy !== null || requirements.length === 0}>{aiBusy === 'map' ? 'Building map…' : 'Build map'}</button><button className="button-primary" onClick={addNode}>＋ Add node</button></div>}</div>
-          {activeTab === 'overview' && <div className="workspace-overview"><div className="overview-metrics"><div><small>Current scope</small><strong>{requirements.length} <i>requirements</i></strong><span>From the current brief</span></div><div><small>Open changes</small><strong className="rose-text">{pendingChanges.length} <i>need review</i></strong><span className="rose-text">AI proposes. You decide.</span></div><div><small>Team coverage</small><strong>{coverage}% <i>assigned</i></strong><span>{assigned} of {requirements.length} have an owner</span></div><div><small>Baseline</small><strong>{baselineConfirmed ? '✓' : '–'} <i>{baselineConfirmed ? 'V1 confirmed' : 'Not confirmed'}</i></strong><span>{baselineConfirmed ? 'Locked' : 'AI output is not scope yet'}</span></div></div><div className="overview-columns"><div className="overview-card"><header><div><h3>Living project map</h3><p>Your project, connected to the source brief.</p></div><button onClick={() => setActiveTab('map')}>Open map →</button></header><div className="overview-map-preview"><span>PROJECT</span><strong>{projectTitle}</strong><div>{workAreas.length === 0 ? <b>No map yet</b> : workAreas.slice(0, 6).map((node) => <b key={node.id}>{node.title}</b>)}</div></div></div><div className="overview-card"><header><div><h3>Needs your decision</h3><p>AI analysis is ready for review.</p></div><button onClick={() => setActiveTab('changes')}>See all →</button></header>{pendingChanges.length === 0 ? <p className="ai-note">No open changes. Check a client message to see an AI proposal.</p> : pendingChanges.slice(0, 3).map((change) => <button className="overview-change" key={change.id} onClick={() => setActiveTab('changes')}><em>{change.type.split(' ')[0]}</em><span><strong>{change.title}</strong><small>{change.decision}</small></span><b>›</b></button>)}</div></div></div>}
-          {activeTab === 'requirements' && <div className="workspace-table"><header><div><h3>Requirements</h3><p>{requirements.length} requirements. A PDF stays a proposal until you add it. It does not confirm the baseline.</p></div><button className="button-primary" onClick={addRequirement}>＋ Add requirement</button></header>
-            <form className="ai-composer" onSubmit={readPdf}>
-              <label htmlFor="brief-pdf">Send a PDF brief</label>
-              <input id="brief-pdf" type="file" accept="application/pdf,.pdf" onChange={(event) => setPdfFile(event.target.files?.[0] ?? null)} />
-              <div><button className="button-primary" type="submit" disabled={aiBusy !== null || !pdfFile}>{aiBusy === 'pdf' ? 'Reading PDF and building the map…' : 'Read PDF'}</button>{aiError && <span className="ai-error">{aiError}</span>}</div>
-              <p className="ai-note">The PDF is kept as its own version. Requirements stay proposals, and the map is drawn from them. This does not confirm the baseline.</p>
-            </form>
-            <form className="ai-composer" onSubmit={readBrief}>
-              <label htmlFor="brief-text">Or paste brief text</label>
-              <textarea id="brief-text" value={briefText} onChange={(event) => setBriefText(event.target.value)} placeholder="Paste the client brief here. The AI will extract requirements. It will not change the baseline." />
-              <div><button className="button-light" type="submit" disabled={aiBusy !== null}>{aiBusy === 'brief' ? 'Reading brief…' : 'Extract from text'}</button></div>
-            </form>
-            {briefProposals.length > 0 && <div className="ai-proposals"><strong>Proposed requirements</strong><p>Edit them before adding. Adding them does not confirm the baseline.</p>{briefProposals.map((row) => <div className="proposal-row" key={row.id}><input value={row.title} onChange={(event) => editProposal(row.id, { title: event.target.value })} /><textarea value={row.description} onChange={(event) => editProposal(row.id, { description: event.target.value })} /><small>{row.source} · {row.status}{row.quote ? ` · "${row.quote}"` : ''}</small></div>)}<button className="button-primary" type="button" onClick={acceptBriefProposals}>Add for review</button></div>}
-            {requirements.map((row) => <div className="requirement-row" key={row.id}><span><strong>{row.id} · {row.title}</strong><small>{row.area}{row.quote ? ` · "${row.quote.slice(0, 90)}"` : ''}</small></span><b>{row.owner}</b><a>{row.source}</a><em className={row.status === 'Clear' ? '' : 'review'}>{row.status}</em>›</div>)}
-          </div>}
-          {activeTab === 'changes' && <div className="workspace-table"><header><div><h3>Change review</h3><p>Compare a new brief with the current map. The map stays as it is until you apply the review.</p></div></header>
-            <form className="ai-composer" onSubmit={reviewChange}>
-              <label htmlFor="client-message">New brief</label>
-              <textarea id="client-message" value={clientMessage} onChange={(event) => setClientMessage(event.target.value)} placeholder="Paste the new client brief." />
-              <label htmlFor="change-pdf">Or send a PDF</label>
-              <input id="change-pdf" type="file" accept="application/pdf,.pdf" onChange={(event) => setChangeFile(event.target.files?.[0] ?? null)} />
-              <div><button className="button-primary" type="submit" disabled={aiBusy !== null}>{aiBusy === 'change' ? 'Reviewing…' : 'Review'}</button>{aiError && <span className="ai-error">{aiError}</span>}</div>
-            </form>
-            {pendingReview && <div className="ai-proposals review-result"><em>{reviewLabel(pendingReview)}</em><h3>{pendingReview.summary}</h3><p>{pendingReview.explanation}</p>{pendingReview.clientMessage && <div className="ai-explanation"><p>{pendingReview.clientMessage}</p><button className="button-light" type="button" onClick={copyClientMessage}>{copied ? 'Copied' : 'Copy client message'}</button></div>}{pendingReview.edits.length > 0 ? <div className="review-actions"><button className="button-light" type="button" onClick={() => { setPendingReview(null); setHistory((current) => ['Change review cancelled. The map was not changed · Just now', ...current]); }}>Cancel</button><button className="button-primary" type="button" onClick={applyReview}>Apply to current map</button></div> : <p>The current map stays as it is.</p>}</div>}
-            <div className="change-review-banner"><strong>{pendingChanges.length} changes need your decision</strong><span>Nothing is added to the approved scope until you choose.</span></div>
-            {changes.map((change) => <div className="change-review-card" key={change.id}><em>{change.type}</em><h3>{change.title}</h3><p>{change.detail}</p>{change.explanation && <p className="ai-explanation">{change.explanation}</p>}{change.confidence && <span>Confidence hint: {change.confidence} · Status: {change.decision}</span>}{!change.confidence && <span>Status: {change.decision}</span>}<div className="change-actions"><button onClick={() => decideChange(change.id, 'Included')}>Include</button><button onClick={() => decideChange(change.id, 'Charge extra')}>Charge extra</button><button onClick={() => decideChange(change.id, 'Needs discussion')}>Discuss</button></div></div>)}
-          </div>}
-          {activeTab === 'history' && <div className="workspace-table history-list"><header><div><h3>Project history</h3><p>What was stored, proposed, and decided.</p></div></header>{history.length === 0 ? <p className="ai-note">Nothing recorded yet.</p> : history.map((item, index) => <div className="history-row" key={`${item}-${index}`}><b>●</b><span><strong>{item.split(' · ')[0]}</strong><small>{item.split(' · ')[1] ?? 'Recorded locally'}</small></span><em>Audit</em></div>)}</div>}
-          {activeTab === 'map' && <>
-          {aiError && <p className="ai-error">{aiError}</p>}
-          <div className={`map-viewport ${hand ? 'is-panning' : ''}`} ref={canvasRef} onContextMenu={(event) => event.preventDefault()} onPointerDown={onCanvasPointerDown} onPointerMove={onCanvasPointerMove} onPointerUp={() => setHand(null)} onPointerCancel={() => setHand(null)} onWheel={(event) => { event.preventDefault(); updateZoom(zoom + (event.deltaY < 0 ? .08 : -.08)); }}>
-            <div className="map-world" style={{ width: mapSize.width, height: mapSize.height, transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}>
-              <svg className="map-edges" width={mapSize.width} height={mapSize.height}>{edges.map((edge) => { const from = nodeById.get(edge.from); const to = nodeById.get(edge.to); if (!from || !to) return null; return <path key={edge.id} d={flowPath(from, to)} onClick={() => setEdges((current) => current.filter((item) => item.id !== edge.id))} />; })}</svg>
-              {nodes.map((node) => { const parent = edges.find((edge) => edge.to === node.id); const label = node.kind === 'project' ? 'PROJECT' : parent?.from === 'root' ? 'PHASE' : 'BRANCH'; return <button key={node.id} className={`map-node ${node.kind === 'project' ? 'project-node' : ''} ${node.impacted ? 'impacted' : ''} ${selectedId === node.id ? 'selected' : ''} ${connectSource === node.id ? 'connect-source' : ''}`} style={{ left: node.x, top: node.y }} onClick={() => selectNode(node.id)} onPointerDown={(event) => onNodePointerDown(event, node)} onPointerMove={onNodePointerMove} onPointerUp={() => setDrag(null)}><span className="node-label">{label}{node.impacted && <i>IMPACTED</i>}</span><strong>{node.title}</strong><small>{node.summary || `${node.requirementIds.length} requirements`}</small><footer><b className={`node-avatar ${node.owner.includes('Frontend') ? 'blue' : node.owner.includes('Growth') ? 'rose' : 'green'}`}>{node.owner[0] || '?'}</b><span>{node.owner}</span><em>{node.kind === 'project' ? (baselineConfirmed ? 'Baseline V1' : 'Not confirmed') : `${node.requirementIds.length} req`}</em></footer></button>; })}
+      <header className="workspace-topbar">
+        <div className="workspace-crumb"><a className="workspace-back" href="/projects"><Icon name="back" size={15} />Projects</a><b>/</b><strong>{projectTitle}</strong></div>
+        <div className={`workspace-save-state ${saveError ? 'has-error' : ''}`} data-state={saveStatus} role={saveError ? 'alert' : 'status'}>
+          <Icon name={saveError ? 'changes' : saveStatus === 'saved' ? 'check' : 'history'} size={13} />
+          <span>{saveError || (!canEdit ? 'View only' : saveStatus === 'saved' ? 'Saved online' : saveStatus === 'saving' ? 'Saving...' : 'Unsaved changes')}</span>
+          {saveError && <><button onClick={() => void flushWorkspace().catch(() => undefined)}>Retry save</button><button onClick={downloadUnsavedWork}>Download backup</button><button onClick={() => window.location.reload()}>Reload latest version</button></>}
+        </div>
+        <div className="workspace-context-actions"><ProjectPeople projectId={projectId} /><button className="button-light" onClick={() => setShowShareModal(true)}><Icon name="share" size={15} />Share project</button></div>
+      </header>
+      <div className="workspace-project-header"><div><h1>{projectTitle}</h1><p>Client · {clientName}<span>{latestDocument ? `Brief V${latestDocument.version} · ${latestDocument.name}` : 'No brief imported yet'}</span></p></div><span className={`project-baseline-state ${baselineConfirmed ? 'confirmed' : ''}`}><Icon name={baselineConfirmed ? 'check' : 'shield'} size={14} />{baselineConfirmed ? 'Baseline V1 confirmed' : 'Scope is still a draft'}</span></div>
+      <div className="workspace-navigation">
+        <nav aria-label="Project navigation">{tabItems.map(({ id, icon, label, count }) => <button key={id} className={activeTab === id ? 'side-active' : ''} aria-pressed={activeTab === id} onClick={() => setActiveTab(id)}><Icon name={icon} size={16} /><span>{label}</span>{count !== undefined && <em className={id === 'changes' && count > 0 ? 'danger' : ''}>{count}</em>}</button>)}</nav>
+        <button ref={detailsButtonRef} className="details-toggle" aria-expanded={detailsOpen} aria-controls="node-details" onClick={() => detailsOpen ? closeDetails() : setDetailsOpen(true)}><Icon name="list" size={15} />{activeTab === 'map' ? 'Node details' : 'Work details'}</button>
+      </div>
+      <div className={`workspace-layout ${detailsOpen ? 'with-inspector' : ''}`}>
+        <section className={`workspace-main ${activeTab === 'map' ? 'workspace-map' : ''}`} aria-label={tabTitle}>
+          <div className="workspace-header"><div><h2>{tabTitle}</h2><p>{tabDescription}</p></div></div>
+          {activeTab === 'overview' && <div className="workspace-overview">
+            <div className="overview-metrics">
+              <div className="metric-card"><small>Approved scope</small><strong>{approvedScope?.requirements.length ?? 0} <i>{approvedScope?.requirements.length === 1 ? 'requirement' : 'requirements'}</i></strong><span>Baseline and approved additions</span></div>
+              <div className="metric-card"><small>Awaiting decision</small><strong className={pendingChanges.length ? 'rose-text' : ''}>{pendingChanges.length} <i>{pendingChanges.length === 1 ? 'request' : 'requests'}</i></strong><span>Requests to review and decide</span></div>
+              <div className="metric-card"><small>Assigned requirements</small><strong>{coverage}<i>%</i></strong><span>{assigned} of {requirements.length} requirements</span></div>
+              <div className="metric-card"><small>Original baseline</small><strong className={baselineConfirmed ? 'green-text' : ''}>{baselineConfirmed ? 'V1' : 'Draft'}</strong><span>{baselineConfirmed ? 'Confirmed and locked' : 'Scope not yet confirmed'}</span></div>
             </div>
-            <div className="map-corner-tools"><button title="Reset view" onClick={() => { setPan({ x: 0, y: 0 }); setZoom(1); }}>⊞</button><button title="Map settings">⚙</button></div><div className="map-tip">Scroll to zoom · Right-drag to move · Click a card to read it</div>
-          </div>
+            {!baselineConfirmed && <section className="overview-next"><header><h3>Scope is still a draft</h3><p>Review the brief and map before confirming the agreed scope.</p></header><div className="workflow-steps">
+              <button className="button-light" onClick={() => setActiveTab('requirements')}>Add brief and requirements<Icon name="arrow" size={14} /></button>
+              <button className="button-light" onClick={() => setActiveTab('map')}>Review project map<Icon name="arrow" size={14} /></button>
+              <button className="button-primary" disabled={!isOwner || !editable || aiBusy !== null || requirements.length === 0} onClick={confirmBaseline}>{mutationBusy ? 'Confirming...' : 'Confirm baseline'}</button>
+            </div>{aiError && <p className="ai-error" role="alert">{aiError}</p>}</section>}
+            <div className="overview-columns">
+              <div className="overview-card"><header><div><h3>Work areas <span>{workAreas.length}</span></h3><p>Responsibilities and linked requirements</p></div><button onClick={() => setActiveTab('map')}>Open map →</button></header>{workAreas.length === 0 ? <div className="overview-empty"><p>No work areas in the map yet.</p><button className="button-light" onClick={() => setActiveTab('requirements')}>Add brief and requirements</button></div> : workAreas.map((node) => <button className="overview-work-row" key={node.id} onClick={() => { setSelectedId(node.id); setDetailsOpen(true); setActiveTab('map'); }}><span><strong>{node.title}</strong><small>{node.owner === 'Unassigned' ? 'Unassigned' : node.owner}</small></span><em>{requirementCount(node.requirementIds.length)}</em><Icon name="arrow" size={14} /></button>)}</div>
+              <div className="overview-card"><header><div><h3>Pending decisions</h3><p>New requests and scope changes</p></div><button onClick={() => setActiveTab('changes')}>View all →</button></header>{pendingChanges.length === 0 ? <div className="overview-empty"><Icon name="check" size={25} /><p>No requests awaiting a decision.</p><button className="button-light" onClick={() => setActiveTab('changes')}>Review a new request<Icon name="arrow" size={14} /></button></div> : pendingChanges.slice(0, 3).map((change) => <button className="overview-change" key={change.id} onClick={() => setActiveTab('changes')}><em>{change.type.split(' ')[0]}</em><span><strong>{change.title}</strong><small>{change.decision === 'Pending' ? 'Awaiting decision' : change.decision}</small></span><Icon name="arrow" size={14} /></button>)}</div>
+            </div>
+            {history.length > 0 && <div className="overview-card overview-activity"><header><h3>Recent activity</h3><button onClick={() => setActiveTab('history')}>View activity →</button></header>{history.slice(0, 3).map((item, index) => <div className="history-row" key={`${item}-${index}`}><span><strong>{item.split(' · ')[0]}</strong><small>{activityTime(item.split(' · ')[1])}</small></span></div>)}</div>}
+          </div>}
+          {activeTab === 'requirements' && <div className="workspace-table">
+            <header><div><h3>Brief and requirements <span className="beta-label">{requirements.length}</span></h3><p>Review and add AI suggestions before confirming the agreed scope.</p></div><button className="button-primary" onClick={addRequirement} disabled={!editable}><Icon name="plus" size={15} />Add requirement</button></header>
+            <div className="brief-inputs">
+              <form className="ai-composer" onSubmit={readPdf}><label htmlFor="brief-pdf"><Icon name="upload" size={17} />Import a PDF brief</label><input id="brief-pdf" type="file" accept="application/pdf,.pdf" disabled={!editable || aiBusy !== null} onChange={(event) => setPdfFile(event.target.files?.[0] ?? null)} /><p className="ai-note">Save each document version, suggest requirements, and build a project map.</p><div className="composer-actions"><button className="button-primary" type="submit" disabled={!editable || aiBusy !== null || !pdfFile}><Icon name="spark" size={15} />{aiBusy === 'pdf' ? 'Reading brief and building map...' : 'Read PDF brief'}</button></div></form>
+              <form className="ai-composer" onSubmit={readBrief}><label htmlFor="brief-text"><Icon name="file" size={17} />Or paste your brief</label><textarea id="brief-text" readOnly={!editable} value={briefText} onChange={(event) => setBriefText(event.target.value)} placeholder="Paste your brief or client requirements here..." /><div className="composer-actions"><button className="button-light" type="submit" disabled={!editable || aiBusy !== null || !briefText.trim()}>{aiBusy === 'brief' ? 'Reading brief...' : 'Extract requirements'}</button></div></form>
+            </div>
+            {aiError && <p className="ai-error" role="alert" style={{ margin: '0 20px 20px' }}>{aiError}</p>}
+            {briefProposals.length > 0 && <div className="ai-proposals"><strong>AI suggestions · {requirementCount(briefProposals.length)}</strong><p>Edit the titles and descriptions before adding them. Adding requirements does not confirm the baseline.</p>{briefProposals.map((row) => <div className="proposal-row" key={row.id}><label className="sr-only" htmlFor={`proposal-title-${row.id}`}>Requirement title</label><input id={`proposal-title-${row.id}`} readOnly={!editable} value={row.title} onChange={(event) => editProposal(row.id, { title: event.target.value })} /><label className="sr-only" htmlFor={`proposal-detail-${row.id}`}>Requirement description</label><textarea id={`proposal-detail-${row.id}`} readOnly={!editable} value={row.description} onChange={(event) => editProposal(row.id, { description: event.target.value })} /><small>{row.source} · {row.status}{row.quote ? ` · "${row.quote}"` : ''}</small></div>)}<button className="button-primary" type="button" disabled={!editable} onClick={acceptBriefProposals}>Add for review<Icon name="arrow" size={15} /></button></div>}
+            {requirements.length === 0 ? <p className="table-empty">No requirements yet<br />Import a brief above or add a requirement manually.</p> : <div className="requirements-list"><div className="requirement-head"><span>Requirements</span><span>Assigned to</span><span>Source</span><span>Status</span></div>{requirements.map((row) => <div className="requirement-row" key={row.id}><span><strong>{row.title}</strong><small>{row.id} · {row.area}{row.quote ? ` · "${row.quote.slice(0, 90)}"` : ''}</small></span><b>{row.owner === 'Unassigned' ? 'Unassigned' : row.owner}</b><span className="requirement-source">{row.source}</span><em className={row.status === 'Clear' ? '' : 'review'}>{({ Clear: 'Clear', Review: 'Review', Proposal: 'Proposal', 'Needs review': 'Needs review', Approved: 'Approved' } as Record<string, string>)[row.status] || row.status}</em></div>)}</div>}
+          </div>}
+          {activeTab === 'changes' && <div className="workspace-table">
+            <header><div><h3>New client request</h3><p>{baselineConfirmed ? 'AI compares the request with the approved scope. Review the result and decide how to handle additional work.' : 'Confirm the baseline first to establish a scope for comparison.'}</p></div></header>
+            <form className="ai-composer" onSubmit={reviewChange}><label htmlFor="client-message">Client message or new brief</label><textarea id="client-message" readOnly={!editable} value={clientMessage} onChange={(event) => setClientMessage(event.target.value)} placeholder="e.g. The client wants a membership system beyond the agreed website..." /><label htmlFor="change-pdf"><Icon name="upload" size={16} />Or attach a PDF brief</label><input id="change-pdf" type="file" accept="application/pdf,.pdf" disabled={!editable || aiBusy !== null} onChange={(event) => setChangeFile(event.target.files?.[0] ?? null)} /><div className="composer-actions"><button className="button-primary" type="submit" disabled={!editable || aiBusy !== null || (!clientMessage.trim() && !changeFile)}><Icon name="spark" size={15} />{aiBusy === 'change' ? 'Reviewing request...' : 'Compare with approved scope'}</button>{aiError && <span className="ai-error" role="alert">{aiError}</span>}</div></form>
+            {pendingReview && <div className="ai-proposals review-result"><em>{reviewLabel(pendingReview)}</em><h3>{pendingReview.summary}</h3><p>{pendingReview.explanation}</p>{pendingReview.clientMessage && <div className="ai-explanation"><p>{pendingReview.clientMessage}</p><button className="button-light" type="button" onClick={copyClientMessage}>{copied ? 'Copied' : 'Copy client message'}</button></div>}{pendingReview.edits.length > 0 ? <div className="review-actions"><button className="button-light" type="button" disabled={!editable} onClick={() => { setPendingReview(null); setHistory((current) => ['Change review cancelled. The map was not changed · Just now', ...current]); }}>Cancel proposal</button><button className="button-primary" type="button" disabled={!editable || aiBusy !== null} onClick={applyReview}>Approve and update map<Icon name="arrow" size={15} /></button></div> : <p>No changes to the current map.</p>}</div>}
+            <div className="change-review-banner"><Icon name="changes" size={18} /><div><strong>{pendingChanges.length} {pendingChanges.length === 1 ? 'request' : 'requests'} awaiting a decision</strong><span>Approval updates the scope. Record the pricing decision separately below.</span></div></div>
+            {changes.length === 0 ? <p className="table-empty">No changes recorded yet.</p> : <div className="change-card-grid">{changes.map((change) => <article className="change-review-card" key={change.id}><em>{change.type}</em><h3>{change.title}</h3><p>{change.detail}</p>{change.explanation && <p className="ai-explanation">{change.explanation}</p>}<span>{change.confidence ? `Confidence: ${change.confidence} · ` : ''}Status: {change.decision === 'Pending' ? 'Pending' : change.decision}</span>{change.commercialDecision && <p>Pricing: {change.commercialDecision === 'Included' ? 'Included' : change.commercialDecision === 'Charge extra' ? 'Charge extra' : 'Needs discussion'}</p>}<div className="change-actions"><button aria-pressed={change.commercialDecision === 'Included'} disabled={!editable} onClick={() => decideChange(change.id, 'Included')}>Included</button><button aria-pressed={change.commercialDecision === 'Charge extra'} disabled={!editable} onClick={() => decideChange(change.id, 'Charge extra')}>Charge extra</button><button aria-pressed={change.commercialDecision === 'Needs discussion'} disabled={!editable} onClick={() => decideChange(change.id, 'Needs discussion')}>Discuss</button></div>{(changeReviews[change.id] ?? []).map((review) => <span className={`client-review-badge ${review.status}`} key={review.token}>{review.status === 'approved' ? 'Client approved' : review.status === 'needs_discussion' ? 'Client wants to talk' : 'Waiting for client'}</span>)}{editable && <button className="button-light client-review-open" type="button" onClick={() => openReviewDialog(change)}><Icon name="share" size={13} />Send to client for approval</button>}</article>)}</div>}
+          </div>}
+          {activeTab === 'history' && <div className="workspace-table history-list"><header><div><h3>All activity</h3><p>Project activity, with the most recent entries first.</p></div></header>{history.length === 0 ? <p className="table-empty">No activity yet.<br />New requirements and decisions will appear here.</p> : history.map((item, index) => <div className="history-row" key={`${item}-${index}`}><b>●</b><span><strong>{item.split(' · ')[0]}</strong><small>{activityTime(item.split(' · ')[1])}</small></span><em>Recorded</em></div>)}</div>}
+          {activeTab === 'map' && <>
+            {!baselineConfirmed && workAreas.length > 0 && requirements.length > 0 && <div className="map-baseline-prompt">
+              <div><strong>Set your first agreed scope</strong><p>Confirm this baseline to compare future client requests with the work you agreed to do.</p>{!isOwner && <small>Only the project owner can confirm the baseline.</small>}</div>
+              {isOwner && <button className="button-primary" disabled={!editable || aiBusy !== null} onClick={() => { setAiError(''); setShowBaselinePrompt(true); }}><Icon name="shield" size={15} />Confirm baseline</button>}
+            </div>}
+            <div className="workspace-actions" aria-label="Map tools"><button className="button-light zoom-button" aria-label="Zoom out" onClick={() => updateZoom(zoom - .1)}>−</button><span className="zoom-readout">{Math.round(zoom * 100)}%</span><button className="button-light zoom-button" aria-label="Zoom in" onClick={() => updateZoom(zoom + .1)}>+</button><span className="toolbar-divider" /><button className={`button-light ${panMode ? 'active' : ''}`} aria-pressed={panMode} onClick={() => { setPanMode((value) => !value); setConnectMode(false); setConnectSource(null); }}>Pan map</button><button className={`button-light connect ${connectMode ? 'active' : ''}`} aria-pressed={connectMode} disabled={!editable} onClick={() => { setConnectMode((value) => !value); setConnectSource(null); setPanMode(false); }}><Icon name="changes" size={13} />{connectMode ? 'Select 2 nodes' : 'Connect nodes'}</button><button className="button-light" type="button" onClick={buildMap} disabled={!editable || aiBusy !== null || requirements.length === 0}><Icon name="spark" size={13} />{aiBusy === 'map' ? 'Creating...' : 'Build from requirements'}</button><button className="button-primary map-add" onClick={addNode} disabled={!editable}><Icon name="plus" size={14} />Add node</button></div>
+            {aiError && <p className="ai-error" role="alert">{aiError}</p>}
+            <div className={`map-viewport ${hand ? 'is-panning' : ''} ${panMode ? 'pan-mode' : ''}`} ref={canvasRef} onContextMenu={(event) => event.preventDefault()} onPointerDown={onCanvasPointerDown} onPointerMove={onCanvasPointerMove} onPointerUp={() => setHand(null)} onPointerCancel={() => setHand(null)}>
+              <div className="map-world" style={{ width: mapSize.width, height: mapSize.height, transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})` }}>
+                <svg className="map-edges" width={mapSize.width} height={mapSize.height}>{edges.map((edge) => { const from = nodeById.get(edge.from); const to = nodeById.get(edge.to); if (!from || !to) return null; return <path key={edge.id} d={flowPath(from, to)} aria-label="Click to remove connection" onClick={() => editable && setEdges((current) => current.filter((item) => item.id !== edge.id))} />; })}</svg>
+                {nodes.map((node) => { const parent = edges.find((edge) => edge.to === node.id); const label = node.kind === 'project' ? 'Project' : parent?.from === 'root' ? 'Work area' : 'Subtask'; return <button key={node.id} className={`map-node ${node.kind === 'project' ? 'project-node' : ''} ${node.impacted ? 'impacted' : ''} ${selectedId === node.id ? 'selected' : ''} ${connectSource === node.id ? 'connect-source' : ''}`} aria-pressed={selectedId === node.id} style={{ left: node.x, top: node.y }} onClick={() => selectNode(node.id)} onPointerDown={(event) => onNodePointerDown(event, node)} onPointerMove={onNodePointerMove} onPointerUp={() => setDrag(null)} onPointerCancel={() => setDrag(null)}><span className="node-label">{label}{node.impacted && <i>Affected</i>}</span><strong>{node.title}</strong><small>{node.summary || requirementCount(node.requirementIds.length)}</small><footer><b className={`node-avatar ${node.owner.includes('Frontend') ? 'blue' : node.owner.includes('Growth') ? 'rose' : 'green'}`}>{node.owner[0] || '?'}</b><span>{node.owner === 'Unassigned' ? 'Unassigned' : node.owner}</span><em>{node.kind === 'project' ? (baselineConfirmed ? 'Baseline V1' : 'Draft') : requirementCount(node.requirementIds.length)}</em></footer></button>; })}
+              </div>
+              <div className="map-corner-tools"><button title="Fit map to screen" aria-label="Fit map to screen" onClick={fitMap}><Icon name="grid" size={13} /> Fit to screen</button><button title="Reset map view" onClick={() => { setPan({ x: 0, y: 0 }); setZoom(1); }}>Reset</button></div><div className="map-tip">Scroll to zoom · Right-drag to pan · Click a node for details</div>
+            </div>
+            <button className="map-details-link" onClick={() => { setDetailsOpen(true); inspectorRef.current?.scrollIntoView({ block: 'start' }); }}><Icon name="list" size={15} />View selected node details ↓</button>
+            <p className="ai-note" style={{ marginTop: 10 }}>Click a node for responsibilities and details · Enable “Pan map” on touchscreens · Click a connection to remove it</p>
           </>}
         </section>
-        <aside className="workspace-inspector"><div className="inspector-kicker">{selected.kind === 'project' ? 'PROJECT' : 'WORK AREA'}</div><h2>{selected.title}</h2><span className="inspector-status">{selected.impacted ? 'Impacted by open change' : selected.kind === 'project' && baselineConfirmed ? 'Baseline V1 confirmed' : 'Not confirmed'}</span>{selected.summary && <div className="inspector-section"><h3>What this covers</h3><p className="inspector-summary">{selected.summary}</p></div>}<div className="inspector-section"><h3>Owner</h3><div className="inspector-owner">{selected.kind === 'project' && ownerAvatar ? <img className="node-avatar" src={ownerAvatar} alt="" /> : <b className="node-avatar green">{(selected.kind === 'project' ? ownerName : selected.owner)[0] || '?'}</b>}<span>{selected.kind === 'project' ? (ownerName || selected.owner) : selected.owner}</span></div></div><div className="inspector-section"><h3>Connected requirements</h3>{linkedRequirements.length === 0 ? <div className="inspector-requirement"><strong>No requirements yet</strong><small>Read a PDF, add the proposals, then build the map.</small><button className="inline-link" onClick={() => setActiveTab('requirements')}>Open requirements →</button></div> : linkedRequirements.map((row) => <div className="inspector-requirement" key={row.id}><strong>{row.title}</strong><small>{row.source}{row.quote ? ` · "${row.quote.slice(0, 120)}"` : ''}</small></div>)}</div><div className="inspector-section"><h3>Notes</h3><textarea value={nodeNotes[selected.id] ?? ''} onChange={(event) => setNodeNotes((current) => ({ ...current, [selected.id]: event.target.value }))} placeholder="Add a note for your team..." /></div><button className="button-primary inspector-save" onClick={() => { setHistory((current) => [`Notes saved for ${selected.title} · Just now`, ...current]); window.alert('Node details saved locally.'); }}>Save node details</button>{!baselineConfirmed && <button className="baseline-action" onClick={confirmBaseline}>Confirm baseline</button>}</aside>
+        {detailsOpen && <aside ref={inspectorRef} className="workspace-inspector" id="node-details" aria-label="Work details">
+          <div className="inspector-heading"><strong>{selected.kind === 'project' ? 'Project details' : 'Node details'}</strong><button className="icon-button" aria-label="Close work details" onClick={closeDetails}><Icon name="close" size={16} /></button></div>
+          <h2>{selected.title}</h2>
+          <span className={`inspector-status ${selectedIsApproved && !selected.impacted ? 'confirmed' : ''}`}>{selected.impacted ? 'Affected by a new request' : selected.kind === 'project' ? (baselineConfirmed ? 'Baseline V1 confirmed' : 'Scope in progress') : selectedIsApproved ? 'In the approved scope' : 'Draft · Not in the approved scope'}</span>
+          {selected.summary && <div className="inspector-section"><h3>Work details</h3><p className="inspector-summary">{selected.summary}</p></div>}
+          <div className="inspector-section"><h3>Assigned to</h3><div className="inspector-owner">{selected.kind === 'project' && ownerAvatar ? <img className="node-avatar" src={ownerAvatar} alt="" /> : <b className="node-avatar green">{(selected.kind === 'project' ? ownerName : selected.owner)[0] || '?'}</b>}<span>{selected.kind === 'project' ? (ownerName || selected.owner) : selected.owner === 'Unassigned' ? 'Unassigned' : selected.owner}</span></div></div>
+          <div className="inspector-section"><h3>Linked requirements · {linkedRequirements.length}</h3>{linkedRequirements.length === 0 ? <div className="inspector-requirement"><strong>No requirements yet</strong><small>Import a brief, review suggestions, then build the map.</small><button className="inline-link" onClick={() => setActiveTab('requirements')}>Go to requirements →</button></div> : linkedRequirements.map((row) => <div className="inspector-requirement" key={row.id}><strong>{row.title}</strong><small>{row.source}{row.quote ? ` · "${row.quote.slice(0, 120)}"` : ''}</small></div>)}</div>
+          <div className="inspector-section"><h3><label htmlFor="node-notes">Team notes</label></h3><textarea id="node-notes" readOnly={!editable} value={nodeNotes[selected.id] ?? ''} onChange={(event) => setNodeNotes((current) => ({ ...current, [selected.id]: event.target.value }))} placeholder="What should the team know about this work?" /></div>
+          <button className="button-primary inspector-save" disabled={!editable} onClick={() => { setHistory((current) => [`Notes saved for ${selected.title} · Just now`, ...current]); void flushWorkspace().catch(() => undefined); }}><Icon name="check" size={15} />Save details</button>
+          {!baselineConfirmed && isOwner && <button className="baseline-action" disabled={!editable || aiBusy !== null || requirements.length === 0} onClick={confirmBaseline}>{mutationBusy ? 'Confirming...' : 'Confirm original baseline'}</button>}
+          <p className="inspector-footnote">{canEdit ? 'Changes save online automatically. Check the status at the top.' : 'You have view-only access to this project.'}</p>
+          {aiError && <p className="ai-error" role="alert">{aiError}</p>}
+        </aside>}
       </div>
-      {showShareModal && (
-        <ShareModal
-          projectId={projectId}
-          projectName={projectTitle}
-          onClose={() => setShowShareModal(false)}
-        />
-      )}
+      {showBaselinePrompt && !baselineConfirmed && isOwner && <Dialog labelledBy="baseline-prompt-title" onClose={() => setShowBaselinePrompt(false)}>
+        <div className="dialog-header"><div><h2 id="baseline-prompt-title">Confirm your first baseline</h2><p>Your project map is ready.</p></div><button className="icon-button" aria-label="Close dialog" onClick={() => setShowBaselinePrompt(false)}><Icon name="close" /></button></div>
+        <div className="baseline-prompt-content">
+          <p>Review the map and requirements before confirming this as the scope agreed with your client.</p>
+          <div className="baseline-prompt-summary"><span><strong>{requirements.length}</strong> {requirements.length === 1 ? 'requirement' : 'requirements'}</span><span><strong>{workAreas.length}</strong> {workAreas.length === 1 ? 'work area' : 'work areas'}</span></div>
+          <p className="baseline-prompt-note">Confirmation locks the original baseline. Future approved changes are tracked separately, so you can always refer back to this first agreement.</p>
+          {aiError && <p className="ai-error" role="alert">{aiError}</p>}
+          <div className="dialog-actions"><button className="button-light" data-autofocus onClick={() => setShowBaselinePrompt(false)}>Review first</button><button className="button-primary" disabled={!editable || aiBusy !== null || requirements.length === 0} onClick={confirmBaseline}><Icon name="shield" size={15} />{mutationBusy ? 'Confirming...' : 'Confirm baseline'}</button></div>
+        </div>
+      </Dialog>}
+      {adding && <Dialog labelledBy="add-item-title" onClose={() => setAdding(null)}>
+        <div className="dialog-header"><div><h2 id="add-item-title">{adding === 'node' ? 'Add a map node' : 'Add requirement'}</h2><p>{adding === 'node' ? 'Name a work area to organize your project.' : 'Describe the work to add it for review.'}</p></div><button className="icon-button" aria-label="Close dialog" onClick={() => setAdding(null)}><Icon name="close" /></button></div>
+        <form className="workspace-add-form" onSubmit={submitNewItem}><div className="form-group"><label htmlFor="new-item-title">{adding === 'node' ? 'Node title' : 'Requirement title'}</label><input id="new-item-title" data-autofocus autoFocus required value={newItemTitle} onChange={(event) => setNewItemTitle(event.target.value)} placeholder={adding === 'node' ? 'e.g. Homepage design' : 'e.g. Display product listings'} /></div><div className="dialog-actions"><button className="button-light" type="button" onClick={() => setAdding(null)}>Cancel</button><button className="button-primary" type="submit" disabled={!editable || !newItemTitle.trim()}>{adding === 'node' ? 'Add node' : 'Add requirement'}</button></div></form>
+      </Dialog>}
+      {showShareModal && <ShareModal projectId={projectId} projectName={projectTitle} isOwner={isOwner} onClose={() => setShowShareModal(false)} />}
+      {aiBusy && <AiProgress stage={aiStage} seconds={aiElapsed} />}
+      {reviewTarget && <Dialog labelledBy="client-review-title" onClose={() => setReviewTarget(null)}>
+        <div className="dialog-header"><div><h2 id="client-review-title">Send to client for approval</h2><p>The client opens the link without an account, reads the terms, and decides. A decision is recorded and cannot be changed.</p></div><button className="icon-button" aria-label="Close dialog" onClick={() => setReviewTarget(null)}><Icon name="close" /></button></div>
+        <div className="client-review-form">
+          <div className="client-review-request"><small>Client request</small><strong>{reviewTarget.title}</strong><p>{reviewTarget.detail}</p></div>
+          {reviewLink ? (
+            <div className="client-review-done">
+              <p><Icon name="check" size={15} />Review link created. Send it to {clientName || 'your client'} — it works without a login.</p>
+              <div className="client-review-link"><input readOnly value={reviewLink} onFocus={(event) => event.target.select()} /><button className="button-primary" type="button" onClick={copyReviewLink}>{reviewLinkCopied ? 'Copied' : 'Copy link'}</button></div>
+              <p className="ai-note">You will see the client&apos;s decision on the change card and in Activity.</p>
+            </div>
+          ) : (
+            <>
+              <div className="client-review-terms">
+                <div className="form-group"><label htmlFor="review-price">Extra charge (THB)</label><input id="review-price" data-autofocus inputMode="decimal" value={reviewPrice} onChange={(event) => setReviewPrice(event.target.value)} placeholder="e.g. 8000" /></div>
+                <div className="form-group"><label htmlFor="review-time">Extra time <small>(optional)</small></label><input id="review-time" value={reviewTime} onChange={(event) => setReviewTime(event.target.value)} placeholder="e.g. 1 more week" /></div>
+                <div className="form-group"><label htmlFor="review-deadline">New deadline <small>(optional)</small></label><input id="review-deadline" type="date" value={reviewDeadline} onChange={(event) => setReviewDeadline(event.target.value)} /></div>
+              </div>
+              <div className="form-group"><label htmlFor="review-explanation">Explanation for the client</label><textarea id="review-explanation" rows={5} value={reviewExplanation} onChange={(event) => setReviewExplanation(event.target.value)} placeholder="Explain in the client's language why this request is outside the agreed scope." /><button className="button-light client-review-draft" type="button" disabled={reviewBusy} onClick={draftReviewExplanation}><Icon name="spark" size={14} />{reviewBusy ? 'Drafting...' : 'Draft with AI'}</button><small>AI only drafts from what you entered — it never invents a price or a deadline. Review before sending.</small></div>
+              {aiError && <p className="ai-error" role="alert">{aiError}</p>}
+              <div className="dialog-actions"><button className="button-light" type="button" onClick={() => setReviewTarget(null)}>Cancel</button><button className="button-primary" type="button" disabled={reviewBusy || !reviewExplanation.trim()} onClick={publishReview}><Icon name="share" size={14} />{reviewBusy ? 'Creating link...' : 'Create client link'}</button></div>
+            </>
+          )}
+        </div>
+      </Dialog>}
     </main>
   );
 }
@@ -485,24 +850,53 @@ type ChangeReview = {
 };
 
 function reviewLabel(review: ChangeReview) {
-  if (review.classification === 'in_scope') return 'ALREADY IN THE MAP';
-  if (review.classification === 'ambiguous') return 'NEEDS DETAIL';
-  if (review.magnitude === 'major') return 'NEW SYSTEM';
-  return review.classification === 'new_scope' ? 'SMALL ADDITION' : 'SMALL CHANGE';
+  if (review.classification === 'in_scope') return 'Already in scope';
+  if (review.classification === 'ambiguous') return 'More details needed';
+  if (review.magnitude === 'major') return 'New system';
+  return review.classification === 'new_scope' ? 'Additional work' : 'Existing work changed';
 }
 
-function ensureRequirement(rows: RequirementRow[], title: string, description: string, source: string) {
-  const found = rows.find((row) => row.title.trim() === title.trim());
-  if (found) return { rows, id: found.id };
-  const id = `REQ-C${Date.now()}-${rows.length}`;
-  return { rows: [...rows, { id, title, description, area: 'Change', owner: 'Unassigned', source, status: 'Proposal' }], id };
+function activityTime(value?: string) {
+  if (!value) return 'Saved online';
+  if (value === 'Just now') return 'Just now';
+  if (!/^\d{4}-\d{2}-\d{2}T/.test(value)) return value;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString('en-US', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-function placeUnder(parent: MapNode | undefined, existing: MapNode[]) {
-  const y = (parent?.y ?? 36) + ROW;
-  const row = existing.filter((node) => Math.abs(node.y - y) < 70);
-  const x = row.length === 0 ? (parent?.x ?? 80) : Math.max(...row.map((node) => node.x)) + CARD_W + GAP_X;
-  return { x, y };
+function requirementCount(count: number) {
+  return `${count} ${count === 1 ? 'requirement' : 'requirements'}`;
+}
+
+function useElapsedSeconds(active: boolean) {
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    if (!active) return;
+    setSeconds(0);
+    const started = Date.now();
+    const timer = window.setInterval(() => setSeconds(Math.floor((Date.now() - started) / 1000)), 1000);
+    return () => window.clearInterval(timer);
+  }, [active]);
+  return seconds;
+}
+
+function formatElapsed(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
+function AiProgress({ stage, seconds }: { stage: string; seconds: number }) {
+  return (
+    <div className="ai-progress" role="status" aria-live="polite">
+      <div className="ai-progress-row">
+        <span className="ai-progress-label">{stage || 'Processing'}...</span>
+        <span className="ai-progress-time">{formatElapsed(seconds)}</span>
+      </div>
+      <div className="ai-progress-track"><div className="ai-progress-bar" /></div>
+    </div>
+  );
 }
 
 type ExtractedRequirement = {
@@ -516,9 +910,11 @@ type ExtractedRequirement = {
 };
 
 async function runAI<T>(body: Record<string, unknown>): Promise<T> {
-  const response = await fetch('/api/ai', {
+  const response = await authenticatedFetch('/api/ai', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: {
+      'content-type': 'application/json',
+    },
     body: JSON.stringify(body),
   });
   const payload = await response.json().catch(() => ({})) as { data?: T; error?: string };
@@ -527,18 +923,7 @@ async function runAI<T>(body: Record<string, unknown>): Promise<T> {
 }
 
 function toRequirement(row: RequirementRow) {
-  const clarity = row.clarity === 'ambiguous' || row.clarity === 'missing_detail' || row.clarity === 'conflict' ? row.clarity : 'clear';
-  return {
-    id: row.id,
-    projectId: '',
-    title: row.title,
-    description: row.description,
-    category: row.area,
-    clarity,
-    evidence: [{ documentId: row.documentId ?? 'DOC-001', page: row.page, quote: row.quote || row.description }],
-    suggestedRoles: row.owner !== 'Unassigned' ? [row.owner] : [],
-    approved: false,
-  };
+  return requirementForAI(row, '');
 }
 
 const CARD_W = 220;
@@ -603,13 +988,13 @@ async function ownerIdentity(ownerId: string, currentUserId: string) {
   if (ownerId === currentUserId) {
     const { user, profile } = await loadOwnProfile();
     return {
-      name: profileLabel(profile, googleName(user) || user?.email || '') || 'เจ้าของโปรเจกต์',
+      name: profileLabel(profile, googleName(user) || user?.email || '') || 'Project owner',
       avatar: profile?.avatar_url ?? '',
     };
   }
   const { loadProfiles } = await import('../../../src/lib/profile');
   const profile = (await loadProfiles([ownerId])).get(ownerId);
-  return { name: profileLabel(profile ?? null) || 'เจ้าของโปรเจกต์', avatar: profile?.avatar_url ?? '' };
+  return { name: profileLabel(profile ?? null) || 'Project owner', avatar: profile?.avatar_url ?? '' };
 }
 
 function placedNode(item: SuggestedNode, x: number, y: number, members: Array<{ id: string; name: string; role: string }>): MapNode {

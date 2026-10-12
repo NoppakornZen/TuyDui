@@ -6,7 +6,7 @@ type AvatarProps = {
 
 export function avatarInitial(label: string) {
   const first = Array.from(label.trim())[0];
-  return first ? first.toLocaleUpperCase('th-TH') : '?';
+  return first ? first.toLocaleUpperCase('en-US') : '?';
 }
 
 export default function Avatar({ label, url, className }: AvatarProps) {

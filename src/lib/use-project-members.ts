@@ -69,7 +69,7 @@ export function useProjectMembers(projectId: string) {
     setMembers(rows.map((row) => {
       const profile = profiles.get(row.user_id);
       const name = profileLabel(profile ?? null);
-      return { ...row, name: name || `สมาชิก ${row.user_id.slice(0, 4)}`, avatarUrl: profile?.avatar_url ?? '' };
+      return { ...row, name: name || `Member ${row.user_id.slice(0, 4)}`, avatarUrl: profile?.avatar_url ?? '' };
     }));
   }
 

@@ -1,0 +1,13 @@
+# Server credentials come from the linked Vercel project's environment.
+.env*
+!.env.example
+.claude/
+.agents/
+.codex/
+.aws/
+node_modules/
+.next/
+data/
+*.tsbuildinfo
+videos/
+.design-qa/

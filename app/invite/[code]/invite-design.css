@@ -1,0 +1,25 @@
+.invite-page { min-height: calc(100dvh - 64px); display: grid; place-items: center; padding: 40px 20px; }
+.invite-container { width: 100%; max-width: 510px; padding: 36px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+.invite-loading { display: grid; justify-items: center; gap: 16px; padding: 30px 0; color: var(--muted); font-size: 13px; }
+.invite-loading p { margin: 0; }
+.invite-error, .invite-content { text-align: center; }
+.invite-container .error-icon, .invite-container .invite-icon { display: grid; place-items: center; margin: 0 auto 20px; width: 40px; height: 40px; color: var(--accent); }
+.error-icon { color: var(--red); background: var(--red-soft); }
+.error-icon svg, .invite-icon svg { width: 36px; height: 36px; }
+.invite-container h1 { font-size: 24px; font-weight: 650; letter-spacing: -.6px; margin: 0 0 12px; }
+.invite-error p { color: var(--muted); font-size: 13px; margin-bottom: 25px; }
+.invite-container .project-name { color: var(--ink); font-size: 16px; font-weight: 500; margin-bottom: 24px; overflow-wrap: anywhere; }
+.invite-details { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 20px 0; margin-bottom: 24px; text-align: left; }
+.detail-row { display: flex; align-items: center; justify-content: space-between; padding-bottom: 16px; border-bottom: 1px solid var(--line); margin-bottom: 16px; gap: 12px; }
+.detail-label { font-size: 12px; color: var(--muted); }
+.role-badge { font-size: 10px; padding: 4px 8px; border-radius: 5px; background: #edf3fd; color: #436491; }
+.role-badge.viewer { color: var(--muted); background: #eceff3; }
+.permission-list { display: grid; gap: 10px; }
+.permission-title { color: var(--muted); font-size: 11px; font-weight: 600; margin-bottom: 2px; }
+.permission-item { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+.permission-item svg { color: var(--green); }
+.permission-item.disabled svg { color: var(--muted); }
+.permission-item.disabled { color: var(--muted); }
+.invite-actions { display: flex; gap: 10px; }
+.invite-actions button { flex: 1; }
+@media (max-width: 700px) { .invite-container { padding: 28px 22px; } .invite-actions { flex-direction: column-reverse; } }

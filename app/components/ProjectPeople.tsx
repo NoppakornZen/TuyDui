@@ -11,7 +11,7 @@ type Person = {
   avatarUrl: string;
 };
 
-const ROLE_LABEL = { owner: 'เจ้าของ', editor: 'แก้ไขได้', viewer: 'ดูอย่างเดียว' };
+const ROLE_LABEL = { owner: 'Owner', editor: 'Can edit', viewer: 'View only' };
 
 export default function ProjectPeople({ projectId }: { projectId: string }) {
   const [people, setPeople] = useState<Person[]>([]);
@@ -54,7 +54,7 @@ export default function ProjectPeople({ projectId }: { projectId: string }) {
         className="people-stack"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
-        title="คนในโปรเจกต์"
+        title="Project members"
       >
         {visible.length === 0 ? (
           <span className="people-bubble">·</span>
@@ -66,9 +66,9 @@ export default function ProjectPeople({ projectId }: { projectId: string }) {
 
       {open && (
         <div className="people-panel">
-          <p className="people-panel-title">คนในโปรเจกต์</p>
+          <p className="people-panel-title">Project members</p>
           {people.length === 0 ? (
-            <p className="people-empty">ยังโหลดรายชื่อไม่ได้</p>
+            <p className="people-empty">Could not load project members.</p>
           ) : people.map((person) => (
             <div className="people-row" key={person.userId}>
               <Avatar className={`people-bubble role-${person.role}`} label={person.label} url={person.avatarUrl} />
@@ -117,5 +117,5 @@ async function load(projectId: string): Promise<Person[]> {
 }
 
 function labelFor(userId: string, profile: Profile | undefined) {
-  return profileLabel(profile ?? null) || `สมาชิก ${userId.slice(0, 4)}`;
+  return profileLabel(profile ?? null) || `Member ${userId.slice(0, 4)}`;
 }

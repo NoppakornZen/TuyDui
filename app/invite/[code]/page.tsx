@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import './invite.css';
+import './invite-design.css';
 
 export default function InvitePage() {
   const params = useParams();
@@ -74,7 +74,7 @@ export default function InvitePage() {
         {loading ? (
           <div className="invite-loading">
             <div className="spinner" />
-            <p>Loading invitation...</p>
+            <p>Opening invitation...</p>
           </div>
         ) : error ? (
           <div className="invite-error">
@@ -84,10 +84,10 @@ export default function InvitePage() {
                 <path d="M32 20v16M32 44h.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
               </svg>
             </div>
-            <h1>Invalid Invitation</h1>
+            <h1>Could not open the invitation</h1>
             <p>{error}</p>
             <button className="button-primary" onClick={() => router.push('/projects')}>
-              Return to Projects
+              Back to projects
             </button>
           </div>
         ) : (
@@ -101,19 +101,19 @@ export default function InvitePage() {
               </svg>
             </div>
 
-            <h1>Join Project</h1>
+            <h1>Join this project</h1>
             <p className="project-name">{projectName}</p>
 
             <div className="invite-details">
               <div className="detail-row">
-                <span className="detail-label">Access Level</span>
+                <span className="detail-label">Access level</span>
                 <span className={`role-badge ${role}`}>
-                  {role === 'editor' ? 'Can Edit' : 'Can View'}
+                  {role === 'editor' ? 'Can edit' : 'View only'}
                 </span>
               </div>
 
               <div className="permission-list">
-                <div className="permission-title">With this access, you can:</div>
+                <div className="permission-title">Your access includes:</div>
                 {role === 'editor' ? (
                   <>
                     <div className="permission-item">
@@ -165,7 +165,7 @@ export default function InvitePage() {
                 Decline
               </button>
               <button className="button-primary" onClick={handleAccept}>
-                Accept Invitation
+                Accept invitation
               </button>
             </div>
           </div>

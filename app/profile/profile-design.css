@@ -1,0 +1,23 @@
+.profile-app { min-height: calc(100dvh - 64px); }
+.profile-wrap { max-width: 660px; padding: 38px 28px 70px; margin: 0 auto; }
+.profile-back { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); text-decoration: none; font-size: 12px; margin-bottom: 30px; }
+.profile-back:hover { color: var(--accent); }
+.profile-wrap h1 { font-size: 29px; letter-spacing: -.6px; font-weight: 650; margin: 0 0 8px; }
+.profile-intro { color: var(--muted); font-size: 13px; margin-bottom: 26px; }
+.profile-card { padding: 28px 0; border-top: 1px solid var(--line); display: grid; gap: 22px; }
+.profile-identity { display: flex; align-items: center; gap: 20px; padding-bottom: 25px; border-bottom: 1px solid var(--line); }
+.profile-photo { position: relative; cursor: pointer; flex-shrink: 0; }
+.profile-mark { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-size: 24px; font-weight: 600; object-fit: cover; }
+.profile-photo input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+.profile-photo:focus-within { outline: 3px solid #c64f2760; outline-offset: 4px; border-radius: 8px; }
+.profile-photo-label { display: block; text-align: center; font-size: 10px; color: var(--accent); margin-top: 7px; }
+.profile-identity strong { display: block; font-size: 17px; font-weight: 600; }
+.profile-identity small { display: block; color: var(--muted); font-size: 12px; margin-top: 3px; overflow-wrap: anywhere; }
+.profile-card > label { display: grid; gap: 8px; font-size: 12px; font-weight: 600; }
+.profile-card > label input { width: 100%; min-height: 43px; border: 1px solid #d7dde5; padding: 10px 13px; border-radius: 8px; background: white; font-weight: 400; font-size: 13px; }
+.profile-note { padding: 12px; background: var(--canvas); border-radius: 8px; font-size: 11px; line-height: 1.8; color: var(--muted); margin: 0; }
+.profile-error { font-size: 12px; color: var(--red); margin: 0; }
+.profile-status { color: var(--muted); padding-top: 40px; }
+.profile-actions { display: flex; align-items: center; gap: 14px; border-top: 1px solid var(--line); padding-top: 20px; }
+.profile-actions span { font-size: 12px; color: var(--green); }
+@media (max-width: 700px) { .profile-wrap { padding: 28px 20px 50px; } .profile-card { padding: 22px 0; } .profile-identity { gap: 15px; } }

@@ -1,0 +1,5 @@
+Could you also add a membership system to the website?
+
+Visitors should be able to register an account, log in, and save portfolio projects to a private dashboard. Studio staff need an admin dashboard to view registered members and disable accounts.
+
+Please compare this request with the approved scope before adding it to the project.

@@ -1,0 +1,1 @@
+Please make sure the contact page shows our public email address and phone number, and remains usable on mobile screens. This is the same contact page and responsive behavior described in the original approved brief; we are not asking for a form or any account system.
