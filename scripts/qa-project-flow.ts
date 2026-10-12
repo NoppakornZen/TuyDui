@@ -4,6 +4,7 @@ import {
   loadProjectList,
   projectCreateErrorMessage,
   ProjectVisibilityError,
+  shouldShowQuotaEmptyState,
   verifyCreatedProject,
 } from '../src/lib/project-queries';
 
@@ -61,6 +62,14 @@ const multipleShared = await loadProjectList(clientFor({
 }), 'user-1');
 assert.deepEqual(multipleShared.projects.map((project) => project.id), ['owner-project', 'shared-a', 'shared-b']);
 
+const quotaWithVisibleProject = await loadProjectList(clientFor({
+  projects: [{ data: [owner], error: null }],
+  project_members: [{ data: [], error: null }],
+}), 'user-1');
+assert.equal(quotaWithVisibleProject.ownerProjectCount, 1);
+assert.equal(quotaWithVisibleProject.projects.length, 1);
+assert.equal(shouldShowQuotaEmptyState(true, quotaWithVisibleProject.projects.length), false);
+
 const created = await verifyCreatedProject(clientFor({
   projects: [{ data: owner, error: null }],
 }), 'user-1', owner.id);
@@ -83,10 +92,12 @@ const emptyAfterQuota = await loadProjectList(clientFor({
 }), 'user-1');
 assert.equal(emptyAfterQuota.projects.length, 0);
 assert.equal(emptyAfterQuota.ownerProjectCount, 0);
+assert.equal(shouldShowQuotaEmptyState(true, emptyAfterQuota.projects.length), true);
+assert.equal(shouldShowQuotaEmptyState(false, emptyAfterQuota.projects.length), false);
 
 assert.deepEqual(
   combineProjectRows([owner], [sharedA, owner]),
   [{ ...owner, access: 'owner' }, { ...sharedA, access: 'shared' }],
 );
 
-console.log('project-flow QA passed: owned fallback, shared projects, read-after-write verification, quota error, empty-state recovery');
+console.log('project-flow QA passed: owned/shared visibility, read-after-write verification, quota used with visible project, exhausted quota with empty list, actionable schema error');

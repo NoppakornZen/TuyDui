@@ -8,7 +8,7 @@ import LanguageToggle from '../components/LanguageToggle';
 import { useLocale } from '../components/LocaleProvider';
 import { clearProjectDraft, readProjectDraft } from '../../src/lib/draft';
 import { FREE_PROJECT_LIMIT, isFreeProjectLimitError } from '../../src/domain/project-quota';
-import { loadProjectList, projectCreateErrorMessage, verifyCreatedProject } from '../../src/lib/project-queries';
+import { loadProjectList, projectCreateErrorMessage, shouldShowQuotaEmptyState, verifyCreatedProject } from '../../src/lib/project-queries';
 import './projects.css';
 
 type Project = {
@@ -86,7 +86,7 @@ export default function ProjectsPage() {
       setOwnerProjectCount(result.ownerProjectCount);
       setProjects(result.projects);
       setDataWarning(result.sharedLoadWarning ? t.projects.sharedLoadWarning : '');
-      setQuotaConflict((current) => current && result.projects.length === 0);
+      setQuotaConflict((current) => shouldShowQuotaEmptyState(current, result.projects.length));
     } catch (err) {
       console.error('Failed to load projects:', err);
       setProjects([]);

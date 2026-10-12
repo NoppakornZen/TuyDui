@@ -43,6 +43,10 @@ export function combineProjectRows(owned: ProjectRow[], shared: ProjectRow[]): P
   ].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
 }
 
+export function shouldShowQuotaEmptyState(quotaRejected: boolean, visibleProjectCount: number) {
+  return quotaRejected && visibleProjectCount === 0;
+}
+
 export async function loadProjectList(client: SupabaseClient, userId: string) {
   const { data: owned, error: ownedError } = await client
     .from('projects')

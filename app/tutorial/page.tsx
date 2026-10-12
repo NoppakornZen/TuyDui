@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import LanguageToggle from '../components/LanguageToggle';
 import ProjectDraftForm from '../components/ProjectDraftForm';
 import { useLocale } from '../components/LocaleProvider';
@@ -24,6 +24,8 @@ export default function TutorialPage() {
   const [decision, setDecision] = useState<'add' | 'later' | null>(null);
   const [proposal, setProposal] = useState(false);
   const [announcement, setAnnouncement] = useState('');
+
+  useEffect(() => { setAnnouncement(''); }, [locale]);
 
   const steps = useMemo(() => en
       ? ['Brief', 'Requirements', 'Project map', 'Confirm the sample plan', 'A new client request']
