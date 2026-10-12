@@ -8,21 +8,21 @@ const dictionaries = {
   th: {
     nav: { how: 'วิธีทำงาน', tutorial: 'ลองใช้ตัวอย่าง', signIn: 'เข้าสู่ระบบ', start: 'เริ่มร่างโปรเจกต์' },
     landing: {
-      eyebrow: 'Scope clarity for small teams',
-      title: 'คุมขอบเขตงาน\nก่อนงานจะบาน',
-      description: 'TuyDui ช่วยเปลี่ยน brief ให้เป็น requirements ที่คุยกันรู้เรื่อง เห็นภาพโปรเจกต์ร่วมกัน และตัดสินใจได้เมื่อมีงานใหม่เข้ามา',
-      primary: 'ลองดู flow ตัวอย่าง',
+      eyebrow: 'จากบรีฟลูกค้า สู่แผนงานที่แก้ไขได้',
+      title: 'เปลี่ยนบรีฟ\nเป็นแผนที่แก้ไขได้',
+      description: 'TuyDui ช่วยแปลงบรีฟเป็นรายการงานและแผนผังโปรเจกต์ที่แก้ไขได้ พร้อมเสนอทางเลือกเมื่อมีคำขอใหม่ระหว่างทาง',
+      primary: 'ลองใช้ TuyDui',
       secondary: 'เริ่มร่างโปรเจกต์',
       note: 'ตัวอย่างนี้ไม่เรียก AI จริง และไม่สร้างข้อมูลในโปรเจกต์ของคุณ',
-      forWho: 'สร้างมาเพื่อคนทำงานที่ต้องคุม scope ทุกวัน',
-      three: 'เห็นสิ่งที่ตกลงกัน ตั้งแต่ต้นจนจบ',
+      forWho: 'เริ่มจากบรีฟ แล้วทำแผนร่วมกัน',
+      three: 'จากโจทย์ลูกค้า สู่แผนที่ปรับได้ตลอดโปรเจกต์',
       steps: [
-        ['01', 'เริ่มจาก brief', 'รวบรวมโจทย์ ลูกค้า และเป้าหมายให้อยู่ในที่เดียว'],
-        ['02', 'ทำให้เป็นภาพเดียวกัน', 'เปลี่ยน brief เป็น requirements และ project map ที่แก้ไขได้'],
-        ['03', 'ตัดสินใจก่อนรับงานเพิ่ม', 'เมื่อมี scope ใหม่ ระบบช่วยชี้ให้เห็น แล้วคุณเลือกทางเดินเอง'],
+        ['01', 'เริ่มจากบรีฟลูกค้า', 'รวบรวมโจทย์ เป้าหมาย และข้อมูลลูกค้าไว้ด้วยกัน'],
+        ['02', 'จัดงานเป็นแผนที่แก้ได้', 'แตกบรีฟเป็นรายการงานและแผนผังโปรเจกต์ที่ปรับได้'],
+        ['03', 'ทบทวนคำขอใหม่ด้วยกัน', 'เมื่อบรีฟเปลี่ยน เลือกได้ว่าจะปรับแผนหรือคุยเพิ่มเติม'],
       ],
-      outcomeTitle: 'ไม่ต้องเถียงกันจากความรู้สึก',
-      outcomeBody: 'มีหลักฐานที่อ่านง่ายว่าอะไรอยู่ใน scope เดิม อะไรคือคำขอใหม่ และควรคุยต่ออย่างไร',
+      outcomeTitle: 'เห็นภาพเดียวกันตั้งแต่เริ่มงาน',
+      outcomeBody: 'จัดรายการงานและความเชื่อมโยงให้ชัด แล้วนำบรีฟใหม่มาเทียบเพื่อเลือกแนวทางปรับแผน',
     },
     tutorial: {
       label: 'Interactive example', title: 'ลอง flow ของ TuyDui ด้วยข้อมูลตัวอย่าง',
@@ -43,15 +43,15 @@ const dictionaries = {
   en: {
     nav: { how: 'How it works', tutorial: 'Try the example', signIn: 'Sign in', start: 'Start a project draft' },
     landing: {
-      eyebrow: 'Scope clarity for small teams',
-      title: 'Keep scope clear\nbefore work expands',
-      description: 'TuyDui turns a brief into shared requirements, an editable project map, and a clear decision when new work appears.',
-      primary: 'See the example flow', secondary: 'Start a project draft',
+      eyebrow: 'From client brief to an editable plan',
+      title: 'Turn a brief\ninto a plan you can edit',
+      description: 'TuyDui turns a brief into editable work items and a project map, then helps you review new requests as the project evolves.',
+      primary: 'Try TuyDui', secondary: 'Start a project draft',
       note: 'This is a sample flow. It does not call live AI or create project data.',
-      forWho: 'Built for people who keep scope on track every day',
-      three: 'Keep the agreement visible from start to finish',
-      steps: [['01', 'Start with the brief', 'Keep the client ask, context, and goals in one place'], ['02', 'Build a shared picture', 'Turn the brief into editable requirements and a project map'], ['03', 'Decide before taking on more', 'See what changed, then choose how to handle it'],],
-      outcomeTitle: 'Replace memory with a shared record', outcomeBody: 'See what was in the original scope, what is new, and what needs a conversation next.',
+      forWho: 'Start with the brief. Build the plan together.',
+      three: 'From the client ask to a plan that can evolve',
+      steps: [['01', 'Start with the client brief', 'Keep the client ask, context, and goals together'], ['02', 'Shape the work into a plan', 'Turn the brief into editable work items and a project map'], ['03', 'Review each new request', 'See what changed, then choose whether to update the plan or talk it through'],],
+      outcomeTitle: 'Give the team one clear picture', outcomeBody: 'Map the work and how it connects, then compare new briefs and choose how the plan should change.',
     },
     tutorial: {
       label: 'Interactive example', title: 'Try TuyDui with sample project data', subtitle: 'Move through the flow to see how a brief becomes a scope decision.', demo: 'Sample only', brief: 'Brief', requirements: 'Requirements', map: 'Project map', change: 'Scope change', briefText: 'Build a coffee shop website with a menu, ordering, and an about page.', requirementText: 'The client needs to edit menu items without a developer.', changeText: 'Add accounts and a loyalty points system.', inScope: 'In the original scope', newScope: 'New request', continue: 'Continue', back: 'Back', startDraft: 'Start with my project', finish: 'Draft a real project', reset: 'Start over',
@@ -72,7 +72,10 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const saved = window.localStorage.getItem('tuydui-locale');
-    if (saved === 'th' || saved === 'en') setLocaleState(saved);
+    if (saved === 'th' || saved === 'en') {
+      setLocaleState(saved);
+      document.documentElement.lang = saved;
+    }
   }, []);
 
   function setLocale(next: Locale) {

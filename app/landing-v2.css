@@ -1,0 +1,24 @@
+.landing-page { overflow: clip; }
+.landing-nav { max-width: 1320px; }
+.landing-hero { margin-top: 30px; margin-bottom: 76px; }
+.landing-hero h1 { font-size: clamp(42px,5.2vw,70px); line-height: 1.09; letter-spacing: -.045em; white-space: normal; }
+.landing-hero-copy > p { font-size: 17px; }
+.landing-actions { margin-top: 27px; }
+.landing-primary { min-height: 50px; }
+.landing-primary:focus-visible,.landing-nav a:focus-visible,.landing-nav button:focus-visible { outline: 3px solid #b85b3c; outline-offset: 4px; }
+.scope-window { animation: preview-arrive .65s cubic-bezier(.2,.7,.25,1) both; }
+.map-line { transform-origin: left center; animation: line-arrive .7s ease both; }
+.line-two { animation-delay: .12s; }.line-three { animation-delay: .22s; }
+.map-node { animation: node-arrive .45s cubic-bezier(.2,.75,.25,1) both; }
+.node-one { animation-delay: .18s; }.node-two { animation-delay: .28s; }.node-three { animation-delay: .38s; }
+.landing-audience h2 { line-height: 1.2; }
+.landing-footer { padding-top: 22px; }
+@keyframes preview-arrive { from { opacity: 0; transform: translateY(18px) rotate(2deg); } to { opacity: 1; transform: translateY(0) rotate(2deg); } }
+@keyframes node-arrive { from { opacity: 0; scale: .94; } to { opacity: 1; scale: 1; } }
+@keyframes line-arrive { from { opacity: 0; scale: .2 1; } to { opacity: 1; scale: 1 1; } }
+@media (prefers-reduced-motion: reduce) { .scope-window,.map-line,.map-node { animation-duration: .01ms !important; animation-delay: 0ms !important; transition-duration: .01ms !important; } }
+@media (max-width: 900px) { .landing-hero { margin-top: 16px; }.landing-hero-visual { min-height: 340px; } }
+.landing-hero-copy,.landing-hero-visual { min-width: 0; }
+.scope-window { max-width: 100%; }
+@media (max-width: 900px) { .landing-hero { grid-template-columns: minmax(0,1fr); } }
+@media (max-width: 640px) { .landing-hero h1 { font-size: clamp(38px,11vw,49px); line-height: 1.14; }.landing-hero { grid-template-columns: minmax(0,1fr); margin-top: 14px; }.landing-hero-visual { width: 100%; min-width: 0; min-height: 320px; }.landing-hero-visual:before { width: min(100vw,340px); }.scope-window { width: 100%; max-width: 100%; transform: none; }.landing-footer { padding-bottom: 28px; } }

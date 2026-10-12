@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useLocale } from './LocaleProvider';
 
 const PUBLIC_PATHS = ['/','/tutorial','/login','/auth/callback'];
@@ -12,17 +12,27 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
   const { t } = useLocale();
 
   useEffect(() => {
     setMounted(true);
-    checkUser();
-  }, []);
+    void checkUser(pathname);
+  }, [pathname]);
 
-  async function checkUser() {
-    if (typeof window !== 'undefined' && isPublicPath(window.location.pathname)) {
+  async function checkUser(currentPath: string) {
+    if (isPublicPath(currentPath)) {
       setUser(null);
       setLoading(false);
+      return;
+    }
+    const hasSupabaseConfig = Boolean(
+      process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    );
+    if (!hasSupabaseConfig) {
+      setUser(null);
+      setLoading(false);
+      router.replace('/login');
       return;
     }
     try {
@@ -31,13 +41,13 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
       const { data: { user: currentUser } } = await supabase.auth.getUser();
       setUser(currentUser);
 
-      if (!currentUser && typeof window !== 'undefined' && !isPublicPath(window.location.pathname)) {
+      if (!currentUser && !isPublicPath(currentPath)) {
         router.push('/login');
       }
     } catch (error) {
-      console.error('Auth check failed:', error);
+      console.warn('Auth check failed:', error);
       // Not logged in
-      if (typeof window !== 'undefined' && !isPublicPath(window.location.pathname)) {
+      if (!isPublicPath(currentPath)) {
         router.push('/login');
       }
     } finally {
@@ -70,13 +80,13 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     );
   }
 
-  if (!user && typeof window !== 'undefined' && !isPublicPath(window.location.pathname)) {
+  if (!user && !isPublicPath(pathname)) {
     return null;
   }
 
   return (
     <div>
-      {user && typeof window !== 'undefined' && !isPublicPath(window.location.pathname) && (
+      {user && !isPublicPath(pathname) && (
         <div style={{
           background: '#0F131C',
           borderBottom: '1px solid #1E2636',

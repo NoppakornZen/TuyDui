@@ -18,7 +18,11 @@ export default function ProjectDraftForm({ compact = false }: { compact?: boolea
 
   function update(key: keyof ProjectDraft, value: string) {
     setSaved(false);
-    setDraft((current) => ({ ...current, [key]: value }));
+    setDraft((current) => {
+      const next = { ...current, [key]: value };
+      saveProjectDraft(next);
+      return next;
+    });
   }
 
   function submit(event: React.FormEvent) {
