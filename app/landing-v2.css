@@ -1,7 +1,7 @@
 .landing-page { overflow: clip; }
 .landing-nav { max-width: 1320px; }
 .landing-hero { margin-top: 30px; margin-bottom: 76px; }
-.landing-hero h1 { font-size: clamp(42px,5.2vw,70px); line-height: 1.09; letter-spacing: -.045em; white-space: normal; }
+.landing-hero h1 { font-size: clamp(42px,5.2vw,70px); line-height: 1.09; letter-spacing: -.045em; white-space: normal; font-weight: 700; }
 .landing-hero-copy > p { font-size: 17px; }
 .landing-actions { margin-top: 27px; }
 .landing-primary { min-height: 50px; }
@@ -27,6 +27,7 @@
 .landing-hero-visual:before { filter: none; background: radial-gradient(ellipse, rgba(184,91,60,.055), transparent 68%); }
 .landing-hero-copy > p { line-height: 1.85; }
 .landing-eyebrow,.landing-trust,.landing-steps p,.landing-outcome p { line-height: 1.75; }
+.landing-eyebrow { letter-spacing: .045em; text-transform: none; font-weight: 700; }
 .scope-window-top { flex-wrap: nowrap; }
 .preview-brief-chip { margin-left: 8px; padding: 4px 7px; border: 1px solid #e7e2d9; border-radius: 999px; color: #777870; background: #f8f7f3; font-size: 8px; font-weight: 650; letter-spacing: .02em; white-space: nowrap; }
 .scope-window { animation-duration: .5s; }
@@ -56,7 +57,7 @@
 .landing-eyebrow { color: #96482f; }
 .landing-steps p,.landing-outcome p { line-height: 1.8; }
 @media (max-width: 640px) {
-  .landing-hero h1 { line-height: 1.22; }
+  .landing-hero h1 { line-height: 1.22; font-weight: 700; }
   .preview-brief-chip { max-width: 116px; overflow: hidden; text-overflow: ellipsis; }
 }
 @media (max-width: 900px) { .landing-hero { grid-template-columns: minmax(0,1fr); } }

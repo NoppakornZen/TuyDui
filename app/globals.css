@@ -1,6 +1,6 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; min-height: 100%; background: #0A0D12; }
-body { font-family: 'Sarabun', 'Noto Sans Thai', 'Thonburi', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+body { font-family: 'Thonburi', 'Prompt', 'LINE Seed Sans TH', 'Anuphan', 'Noto Sans Thai', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-weight: 500; }
 button, input, textarea { font: inherit; }
 .language-toggle { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; background: rgba(255,255,255,.06); }
 .language-toggle button { border: 0; border-radius: 999px; padding: 6px 9px; color: rgba(255,255,255,.55); background: transparent; cursor: pointer; font-size: 11px; font-weight: 800; letter-spacing: .04em; }

@@ -8,7 +8,7 @@ const dictionaries = {
   th: {
     nav: { how: 'วิธีทำงาน', tutorial: 'ลองใช้ตัวอย่าง', signIn: 'เข้าสู่ระบบ', start: 'เริ่มร่างโปรเจกต์' },
     landing: {
-      eyebrow: 'จากบรีฟลูกค้า สู่แผนงานที่แก้ไขได้',
+      eyebrow: 'AI ช่วยเปลี่ยนบรีฟให้เป็นแผน',
       title: 'จากบรีฟ สู่แผนงาน\nที่แก้ไขและอัปเดตได้ตลอด',
       description: 'TuyDui ช่วยแปลงบรีฟเป็นรายการงานและแผนผังโปรเจกต์ที่แก้ไขได้ พร้อมเสนอทางเลือกเมื่อมีคำขอใหม่ระหว่างทาง',
       primary: 'ลองใช้ TuyDui',
@@ -37,13 +37,13 @@ const dictionaries = {
     },
     draft: { title: 'เริ่มร่างโปรเจกต์ก่อนเข้าสู่ระบบ', subtitle: 'กรอกข้อมูลพื้นฐานไว้ก่อนได้ เมื่อพร้อมสร้างหรือใช้ AI ค่อยเข้าสู่ระบบ', name: 'ชื่อโปรเจกต์', client: 'ชื่อลูกค้า', brief: 'Brief หรือเป้าหมายงาน', namePlaceholder: 'เช่น เว็บไซต์ร้านกาแฟ', clientPlaceholder: 'เช่น บริษัท ABC', briefPlaceholder: 'เล่าโจทย์สั้น ๆ ที่อยากให้ทีมเข้าใจตรงกัน', save: 'บันทึกไว้แล้วไปต่อ', saved: 'บันทึกร่างไว้ในเบราว์เซอร์นี้แล้ว', privacy: 'ยังไม่ส่งข้อมูลไปที่เซิร์ฟเวอร์', required: 'กรุณากรอกชื่อโปรเจกต์และลูกค้า' },
     login: { title: 'เข้าสู่ระบบเพื่อทำงานต่อ', subtitle: 'ร่างโปรเจกต์ของคุณจะยังอยู่หลังจากเข้าสู่ระบบ', google: 'เข้าสู่ระบบด้วย Google', loading: 'กำลังเข้าสู่ระบบ...', back: 'กลับหน้าแรก', error: 'ไม่สามารถเข้าสู่ระบบได้ในขณะนี้' },
-    projects: { workspace: 'พื้นที่ทำงานของคุณ', title: 'โปรเจกต์ทั้งหมด', subtitle: 'เลือกโปรเจกต์เพื่อเริ่มจัดการ scope และ requirements', new: 'สร้างโปรเจกต์ใหม่', empty: 'ยังไม่มีโปรเจกต์', emptyBody: 'สร้างโปรเจกต์แรกของคุณเพื่อเริ่มติดตาม scope และจัดการ requirements', createFirst: 'สร้างโปรเจกต์แรก', signOut: 'ออกจากระบบ', restored: 'กู้คืนร่างโปรเจกต์จากก่อนเข้าสู่ระบบแล้ว', createTitle: 'สร้างโปรเจกต์ใหม่', cancel: 'ยกเลิก', creating: 'กำลังสร้าง...', create: 'สร้างโปรเจกต์', description: 'รายละเอียด (ไม่บังคับ)', updated: 'อัปเดตล่าสุด', client: 'ลูกค้า', shared: 'แชร์ร่วมกัน', baseline: 'Baseline V1', loadError: 'โหลดโปรเจกต์ไม่สำเร็จ' },
+    projects: { workspace: 'พื้นที่ทำงานของคุณ', title: 'โปรเจกต์ทั้งหมด', subtitle: 'เลือกโปรเจกต์เพื่อเริ่มจัดการ scope และ requirements', new: 'สร้างโปรเจกต์ใหม่', quotaHint: 'ช่วงทดลองใช้ · 1 โปรเจกต์ต่อบัญชี', quotaUsed: 'ใช้สิทธิ์ทดลองแล้ว 1/1', empty: 'ยังไม่มีโปรเจกต์', emptyBody: 'สร้างโปรเจกต์แรกของคุณเพื่อเริ่มติดตาม scope และจัดการ requirements', createFirst: 'สร้างโปรเจกต์แรก', signOut: 'ออกจากระบบ', restored: 'กู้คืนร่างโปรเจกต์จากก่อนเข้าสู่ระบบแล้ว', createTitle: 'สร้างโปรเจกต์ใหม่', cancel: 'ยกเลิก', creating: 'กำลังสร้าง...', create: 'สร้างโปรเจกต์', description: 'รายละเอียด (ไม่บังคับ)', updated: 'อัปเดตล่าสุด', client: 'ลูกค้า', shared: 'แชร์ร่วมกัน', baseline: 'Baseline V1', loadError: 'โหลดโปรเจกต์ไม่สำเร็จ', quotaTitle: 'คุณใช้สิทธิ์ทดลองสร้างโปรเจกต์ครบแล้ว', quotaBody: 'ช่วงทดลองใช้สร้างได้ 1 โปรเจกต์ต่อบัญชี คุณยังเปิด แก้ไขแผน และเพิ่มบรีฟใหม่ในโปรเจกต์เดิมได้ตามปกติ', quotaCta: 'กลับไปโปรเจกต์ของฉัน', quotaClose: 'ปิด', plannedLabel: 'แพ็กเกจที่วางแผนไว้', plannedValue: '50 บาท/เดือน · สูงสุด 5 โปรเจกต์', plannedNote: 'กำลังพัฒนา · ยังไม่เปิดชำระเงิน', createError: 'สร้างโปรเจกต์ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง' },
     common: { loading: 'กำลังโหลด...', language: 'ภาษา' },
   },
   en: {
     nav: { how: 'How it works', tutorial: 'Try the example', signIn: 'Sign in', start: 'Start a project draft' },
     landing: {
-      eyebrow: 'From client brief to an editable plan',
+      eyebrow: 'AI turns a brief into a plan',
       title: 'From brief to a plan\nyou can keep updating',
       description: 'TuyDui turns a brief into editable work items and a project map, then helps you review new requests as the project evolves.',
       primary: 'Try TuyDui', secondary: 'Start a project draft',
@@ -58,7 +58,7 @@ const dictionaries = {
     },
     draft: { title: 'Draft a project before signing in', subtitle: 'Save the basics first. Sign in when you want to create a real project or use AI.', name: 'Project name', client: 'Client name', brief: 'Brief or project goal', namePlaceholder: 'e.g. Coffee shop website', clientPlaceholder: 'e.g. ABC Company', briefPlaceholder: 'Share the short version of what the team should understand', save: 'Save draft and continue', saved: 'Draft saved in this browser', privacy: 'Nothing is sent to the server yet', required: 'Add a project name and client name' },
     login: { title: 'Sign in to continue', subtitle: 'Your project draft will stay with you after sign-in.', google: 'Continue with Google', loading: 'Signing in...', back: 'Back to home', error: 'We could not sign you in right now' },
-    projects: { workspace: 'YOUR WORKSPACE', title: 'All projects', subtitle: 'Choose a project to manage scope and requirements', new: 'New project', empty: 'No projects yet', emptyBody: 'Create your first project to start tracking scope and requirements.', createFirst: 'Create your first project', signOut: 'Sign out', restored: 'Your pre-login project draft has been restored.', createTitle: 'Create a new project', cancel: 'Cancel', creating: 'Creating...', create: 'Create project', description: 'Description (optional)', updated: 'Updated', client: 'Client', shared: 'Shared', baseline: 'Baseline V1', loadError: 'Could not load projects' },
+    projects: { workspace: 'YOUR WORKSPACE', title: 'All projects', subtitle: 'Choose a project to manage scope and requirements', new: 'New project', quotaHint: 'Free trial · 1 project per account', quotaUsed: 'Free trial used · 1/1', empty: 'No projects yet', emptyBody: 'Create your first project to start tracking scope and requirements.', createFirst: 'Create your first project', signOut: 'Sign out', restored: 'Your pre-login project draft has been restored.', createTitle: 'Create a new project', cancel: 'Cancel', creating: 'Creating...', create: 'Create project', description: 'Description (optional)', updated: 'Updated', client: 'Client', shared: 'Shared', baseline: 'Baseline V1', loadError: 'Could not load projects', quotaTitle: 'Your free trial project is already in use', quotaBody: 'The free trial includes 1 project per account. You can keep editing your existing project and add new briefs.', quotaCta: 'Back to my projects', quotaClose: 'Close', plannedLabel: 'Planned package', plannedValue: '฿50/month · up to 5 projects', plannedNote: 'In development · payments are not open', createError: 'We could not create the project. Please try again.' },
     common: { loading: 'Loading...', language: 'Language' },
   },
 } as const;

@@ -38,11 +38,11 @@ export default function LoginPage() {
   const copy = locale === 'th' ? {
     headline: 'รู้ว่าเราตกลงอะไร', changed: 'เห็นว่าอะไรเปลี่ยนไป',
     body: <>เก็บ brief วางแผนงาน และตรวจคำขอใหม่จากลูกค้า<br />ให้ทีมใช้ขอบเขตงานเดียวกันในการทำงาน</>,
-    plan: 'แผนงาน', briefBody: 'เริ่มจาก PDF หรือข้อความ แล้วตรวจข้อเสนอจาก AI', planBody: 'เห็นว่างานเชื่อมกันอย่างไร และใครรับผิดชอบ', changeBody: 'เทียบคำขอใหม่กับ scope ที่ยืนยันแล้วก่อนตัดสินใจ', open: <>เปิดโปรเจกต์ของคุณ<br />หรือเริ่มจาก brief แรกของคุณ</>, beta: <>Beta · AI ฟรีสูงสุด 10 ครั้งต่อวัน<br />ตรวจคำแนะนำจาก AI ก่อนนำไปใช้ในโปรเจกต์</>, footer: 'ขอบเขตงานเดียวกันสำหรับทีมของคุณ',
+    plan: 'แผนงาน', briefBody: 'เริ่มจาก PDF หรือข้อความ แล้วตรวจข้อเสนอจาก AI', planBody: 'เห็นว่างานเชื่อมกันอย่างไร และใครรับผิดชอบ', changeBody: 'เทียบคำขอใหม่กับ scope ที่ยืนยันแล้วก่อนตัดสินใจ', open: <>เปิดโปรเจกต์ของคุณ<br />หรือเริ่มจาก brief แรกของคุณ</>, beta: <>Beta · การใช้ AI จะถูกติดตามระหว่างช่วงทดลอง<br />ตรวจคำแนะนำจาก AI ก่อนนำไปใช้ในโปรเจกต์</>, footer: 'ขอบเขตงานเดียวกันสำหรับทีมของคุณ',
   } : {
     headline: 'Know what was agreed.', changed: 'See what changed.',
     body: <>Keep your briefs, map your work, and review client requests.<br />Give your team one shared scope to work from.</>,
-    plan: 'Plan', briefBody: 'Import a PDF or text, then review AI suggestions.', planBody: 'See how work connects and who is responsible.', changeBody: 'Compare new requests with the approved scope before deciding.', open: <>Open your projects<br />or start with your first brief.</>, beta: <>Beta · Up to 10 free AI requests per day.<br />Review AI suggestions before using them in your project.</>, footer: 'A shared scope for your team',
+    plan: 'Plan', briefBody: 'Import a PDF or text, then review AI suggestions.', planBody: 'See how work connects and who is responsible.', changeBody: 'Compare new requests with the approved scope before deciding.', open: <>Open your projects<br />or start with your first brief.</>, beta: <>Beta · AI usage is monitored during the preview.<br />Review AI suggestions before using them in your project.</>, footer: 'A shared scope for your team',
   };
 
   return (

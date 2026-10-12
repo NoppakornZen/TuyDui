@@ -7,6 +7,7 @@ import Avatar from '../components/Avatar';
 import LanguageToggle from '../components/LanguageToggle';
 import { useLocale } from '../components/LocaleProvider';
 import { clearProjectDraft, readProjectDraft } from '../../src/lib/draft';
+import { FREE_PROJECT_LIMIT, isFreeProjectLimitError } from '../../src/domain/project-quota';
 import './projects.css';
 
 type Project = {
@@ -26,6 +27,8 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [showQuotaModal, setShowQuotaModal] = useState(false);
+  const [ownerProjectCount, setOwnerProjectCount] = useState(0);
   const [projectName, setProjectName] = useState('');
   const [clientName, setClientName] = useState('');
   const [description, setDescription] = useState('');
@@ -77,6 +80,8 @@ export default function ProjectsPage() {
 
       if (ownedError) throw ownedError;
 
+      setOwnerProjectCount(owned?.length ?? 0);
+
       const { data: memberships, error: memberError } = await supabase
         .from('project_members')
         .select('project_id, projects(*)')
@@ -121,26 +126,43 @@ export default function ProjectsPage() {
 
       if (!user) throw new Error('Not authenticated');
 
-      const { data, error: createError } = await supabase
-        .from('projects')
-        .insert({
-          owner_id: user.id,
-          name: projectName.trim(),
-          client_name: clientName.trim(),
-          description: description.trim(),
-        })
-        .select()
-        .single();
+      const { data, error: createError } = await supabase.rpc('create_project_with_free_limit', {
+        project_name: projectName.trim(),
+        project_client_name: clientName.trim(),
+        project_description: description.trim(),
+      });
 
-      if (createError) throw createError;
+      if (createError) {
+        if (isFreeProjectLimitError(createError)) {
+          setShowModal(false);
+          setShowQuotaModal(true);
+          setCreating(false);
+          return;
+        }
+        throw createError;
+      }
+
+      const created = Array.isArray(data) ? data[0] : data;
+      if (!created || typeof created !== 'object' || !('id' in created) || typeof created.id !== 'string') {
+        throw new Error('Project creation returned no project.');
+      }
 
       clearProjectDraft();
 
-      router.push(`/workspace/${data.id}`);
+      router.push(`/workspace/${created.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create project');
+      setError(err instanceof Error && err.message ? err.message : t.projects.createError);
       setCreating(false);
     }
+  }
+
+  function openCreateModal() {
+    setError('');
+    if (ownerProjectCount >= FREE_PROJECT_LIMIT) {
+      setShowQuotaModal(true);
+      return;
+    }
+    setShowModal(true);
   }
 
   async function handleSignOut() {
@@ -180,9 +202,18 @@ export default function ProjectsPage() {
             <h1>{t.projects.title}</h1>
             <p>{t.projects.subtitle}</p>
           </div>
-          <button className="button-primary" onClick={() => setShowModal(true)}>
-            ＋ {t.projects.new}
-          </button>
+          <div className="projects-create-cluster">
+            <button
+              className="button-primary"
+              onClick={openCreateModal}
+              title={ownerProjectCount >= FREE_PROJECT_LIMIT ? t.projects.quotaUsed : t.projects.quotaHint}
+            >
+              ＋ {t.projects.new}
+            </button>
+            <span className={`project-quota-note ${ownerProjectCount >= FREE_PROJECT_LIMIT ? 'is-used' : ''}`}>
+              {ownerProjectCount >= FREE_PROJECT_LIMIT ? t.projects.quotaUsed : t.projects.quotaHint}
+            </span>
+          </div>
         </div>
 
         {loading ? (
@@ -195,7 +226,7 @@ export default function ProjectsPage() {
             <div className="empty-icon">📁</div>
             <h2>{t.projects.empty}</h2>
             <p>{t.projects.emptyBody}</p>
-            <button className="button-primary" onClick={() => setShowModal(true)}>
+            <button className="button-primary" onClick={openCreateModal}>
               {t.projects.createFirst}
             </button>
           </div>
@@ -297,6 +328,34 @@ export default function ProjectsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showQuotaModal && (
+        <div className="modal-overlay quota-overlay" onClick={() => setShowQuotaModal(false)}>
+          <div
+            className="quota-modal-content"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="quota-modal-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button className="modal-close quota-modal-close" onClick={() => setShowQuotaModal(false)} aria-label={t.projects.quotaClose}>✕</button>
+            <div className="quota-modal-mark" aria-hidden="true">✓</div>
+            <div className="quota-modal-copy">
+              <p className="quota-modal-kicker">{locale === 'th' ? 'สิทธิ์ทดลองใช้งาน' : 'FREE TRIAL'}</p>
+              <h2 id="quota-modal-title">{t.projects.quotaTitle}</h2>
+              <p>{t.projects.quotaBody}</p>
+            </div>
+            <div className="planned-package">
+              <span>{t.projects.plannedLabel}</span>
+              <strong>{t.projects.plannedValue}</strong>
+              <small>{t.projects.plannedNote}</small>
+            </div>
+            <button className="button-primary quota-modal-cta" onClick={() => setShowQuotaModal(false)}>
+              {t.projects.quotaCta}
+            </button>
           </div>
         </div>
       )}
