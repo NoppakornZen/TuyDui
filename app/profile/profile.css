@@ -15,7 +15,7 @@ body {
   min-height: 100vh;
   background: linear-gradient(135deg, #0A0D12 0%, #161D2B 100%);
   color: #FFFFFF;
-  font-family: 'Noto Sans Thai', 'Sarabun', -apple-system, sans-serif;
+  font-family: 'Anuphan', 'Noto Sans Thai', system-ui, -apple-system, sans-serif;
 }
 
 .profile-topbar {

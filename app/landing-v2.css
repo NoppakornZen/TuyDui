@@ -62,3 +62,19 @@
 }
 @media (max-width: 900px) { .landing-hero { grid-template-columns: minmax(0,1fr); } }
 @media (max-width: 640px) { .landing-hero h1 { font-size: clamp(28px,7.5vw,34px); line-height: 1.2; }.landing-hero { grid-template-columns: minmax(0,1fr); margin-top: 14px; }.landing-hero-visual { width: 100%; min-width: 0; min-height: 320px; }.landing-hero-visual:before { width: min(100vw,340px); }.scope-window { width: 100%; max-width: 100%; transform: none; }.landing-footer { padding-bottom: 28px; } }
+
+/* V2.3 visual rhythm: the promise leads, with no redundant eyebrow or status line. */
+.landing-hero { margin-top: 52px; margin-bottom: 92px; align-items: center; }
+.landing-hero-copy { max-width: 560px; }
+.landing-hero h1 { margin: 0 0 22px; max-width: 560px; font-size: clamp(38px, 4.1vw, 60px); line-height: 1.18; letter-spacing: -.035em; }
+.landing-hero h1 span:last-child { color: #b85b3c; }
+.landing-hero-copy > p { max-width: 500px; margin: 0; color: #62635d; font-size: 18px; line-height: 1.75; }
+.landing-actions { margin-top: 30px; }
+.landing-primary { border-radius: 10px; padding: 14px 20px; background: #b85b3c; font-size: 15px; }
+.landing-primary:hover { background: #a64e32; }
+.landing-outcome-title { margin: 0; color: #282924; font-size: clamp(24px, 3vw, 36px); line-height: 1.25; letter-spacing: -.025em; }
+.landing-outcome p { margin-top: 14px; }
+.landing-footer .brand-wordmark { color: #282924; }
+.landing-footer .wordmark-accent { color: #b85b3c; }
+@media (max-width: 900px) { .landing-hero { margin-top: 34px; margin-bottom: 70px; gap: 28px; } .landing-hero-copy { max-width: 680px; } }
+@media (max-width: 640px) { .landing-hero { margin-top: 24px; margin-bottom: 58px; } .landing-hero h1 { max-width: 100%; font-size: clamp(31px, 8.6vw, 40px); line-height: 1.25; } .landing-hero-copy > p { font-size: 16px; line-height: 1.8; } .landing-outcome { flex-direction: column; align-items: flex-start; } .landing-footer { gap: 12px; flex-wrap: wrap; } }

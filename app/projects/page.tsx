@@ -39,6 +39,13 @@ export default function ProjectsPage() {
   const router = useRouter();
 
   useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('preview') === 'quota') {
+      setLoading(false);
+      setProfileMark('TD');
+      setOwnerProjectCount(FREE_PROJECT_LIMIT);
+      setShowQuotaModal(true);
+      return;
+    }
     loadProjects();
   }, []);
 
@@ -186,7 +193,7 @@ export default function ProjectsPage() {
           <a className="profile-entry" href="/profile" title="Profile">
             <Avatar className="profile-entry-avatar" label={profileMark} url={avatarUrl} />
           </a>
-          <a className="projects-brand" href="/projects">TuyDui</a>
+          <a className="projects-brand brand-wordmark" href="/projects">Tuy<span className="wordmark-accent">Dui</span></a>
         </div>
         <div className="projects-account">
           <LanguageToggle compact />

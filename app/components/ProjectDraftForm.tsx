@@ -37,7 +37,6 @@ export default function ProjectDraftForm({ compact = false }: { compact?: boolea
   return (
     <form className={`draft-form${compact ? ' draft-form-compact' : ''}`} onSubmit={submit}>
       <div className="draft-form-heading">
-        <div><span className="eyebrow-dot" />{t.landing.eyebrow}</div>
         <h2>{t.draft.title}</h2>
         <p>{t.draft.subtitle}</p>
       </div>

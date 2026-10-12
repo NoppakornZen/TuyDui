@@ -202,3 +202,17 @@
   .requirement-row { min-height: 50px; }
   .tutorial-actions .landing-primary { white-space: nowrap; }
 }
+
+/* V2.3: keep the sample label useful and the type comfortably readable. */
+.tutorial-page { font-family: 'Anuphan', 'Noto Sans Thai', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+.tutorial-heading { padding-top: 56px; }
+.tutorial-heading h1 { margin-bottom: 14px; max-width: 760px; font-size: clamp(32px, 4vw, 48px); line-height: 1.25; }
+.tutorial-heading p { max-width: 610px; line-height: 1.8; }
+.demo-label { padding: 0; border-radius: 0; color: #91452f; background: transparent; font-size: 13px; font-weight: 700; letter-spacing: 0; text-transform: none; }
+.tutorial-copy h2 { margin-top: 9px; font-size: clamp(25px, 3vw, 34px); line-height: 1.35; }
+.tutorial-copy > p { max-width: 560px; font-size: 16px; }
+.tutorial-card { padding: 34px; }
+.tutorial-progress { margin-bottom: 38px; }
+.tutorial-actions { margin-top: 32px; }
+.tutorial-completion .demo-label { padding: 0; }
+@media (max-width: 760px) { .tutorial-heading { padding-top: 36px; } .tutorial-card { padding: 22px 18px; } .tutorial-progress { margin-bottom: 28px; } .tutorial-copy h2 { font-size: 25px; } }

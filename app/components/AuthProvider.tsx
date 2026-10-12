@@ -6,6 +6,7 @@ import { useLocale } from './LocaleProvider';
 
 const PUBLIC_PATHS = ['/','/tutorial','/login','/auth/callback'];
 const isPublicPath = (pathname: string) => PUBLIC_PATHS.includes(pathname) || pathname.startsWith('/_next');
+const isQuotaPreviewPath = (pathname: string) => pathname === '/projects' && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('preview') === 'quota';
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any>(null);
@@ -21,7 +22,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   }, [pathname]);
 
   async function checkUser(currentPath: string) {
-    if (isPublicPath(currentPath)) {
+    if (isPublicPath(currentPath) || isQuotaPreviewPath(currentPath)) {
       setUser(null);
       setLoading(false);
       return;
@@ -80,7 +81,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     );
   }
 
-  if (!user && !isPublicPath(pathname)) {
+  if (!user && !isPublicPath(pathname) && !isQuotaPreviewPath(pathname)) {
     return null;
   }
 

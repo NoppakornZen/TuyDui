@@ -80,7 +80,7 @@ export default function ProfilePage() {
   return (
     <main className="profile-app">
       <header className="profile-topbar">
-        <a className="profile-brand" href="/projects">TuyDui</a>
+        <a className="profile-brand brand-wordmark" href="/projects">Tuy<span className="wordmark-accent">Dui</span></a>
         <a className="profile-back" href="/projects">กลับไปโปรเจกต์</a>
       </header>
 
