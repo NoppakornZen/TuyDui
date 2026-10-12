@@ -82,3 +82,123 @@
 @media (max-width: 420px) { .tutorial-progress button { min-width: 0; width: 19%; padding: 0; }.tutorial-progress button span { max-width: 62px; font-size: 8px; }.tutorial-progress-line { left: 8%; right: 8%; }.requirement-row { gap: 6px; padding-inline: 7px; font-size: 12px; }.text-action { font-size: 11px; }.map-work-node { width: 36%; font-size: 9px; }.map-work-root { width: 112px; padding-inline: 7px; font-size: 9px; }.tutorial-actions { gap: 5px; }.tutorial-actions .landing-primary { gap: 7px; font-size: 12px; } }
 
 .tutorial-page { color: #282924; background: #f8f7f3; }.tutorial-login { color: #696a64; }.tutorial-heading h1,.tutorial-copy h2 { color: #282924; }.tutorial-heading p,.tutorial-copy > p { color: #686963; }.tutorial-card { border-color: #deddd7; background: #fffefa; box-shadow: 0 22px 55px rgba(60,49,36,.1); }.tutorial-progress-line { background: #deddd7; }.tutorial-progress button { color: #92938b; }.tutorial-progress button i { border-color: #d2d0c8; background: #fff; }.tutorial-progress button.active { color: #282924; }.tutorial-progress button.active i { color: #fff; border-color: #b85b3c; background: #b85b3c; }.demo-label { color: #b85b3c; background: #f9ebe6; }.tutorial-side { border-color: #deddd7; }.tutorial-side-label,.tutorial-side p { color: #85867f; }.tutorial-side-mark { color: #b85b3c; }.tutorial-actions { border-color: #deddd7; }.tutorial-back { color: #6d6e67; }.mini-map { background-image: linear-gradient(rgba(60,52,40,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(60,52,40,.06) 1px,transparent 1px); }.mini-node { border-color: #d8d6cf; background: #fff; color: #282924; }.mini-main { border-color: rgba(184,91,60,.5); }.mini-map b { color: #b85b3c; }.tutorial-bottom a,.tutorial-bottom button { color: #777870; }
+
+/* V2.1 type rhythm and scene choreography. Animations never gate input. */
+.tutorial-page { font-family: 'Sarabun', 'Noto Sans Thai', 'Thonburi', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+.tutorial-page .landing-primary,.tutorial-actions .landing-primary { box-shadow: none; }
+.tutorial-page .language-toggle { min-height: 44px; padding: 3px; border-color: #c9c7be; background: #eeece5; }
+.tutorial-page .language-toggle-compact button { min-width: 48px; min-height: 44px; padding: 8px 12px; color: #55564f; font-size: 14px; font-weight: 750; }
+.tutorial-page .language-toggle-compact button.active { color: #fff; background: #a84f34; box-shadow: none; }
+.tutorial-page .language-toggle button:focus-visible { outline: 3px solid #713a2a; outline-offset: 2px; }
+.tutorial-progress button { color: #66675f; font-size: 12px; }
+.tutorial-progress button.active { color: #282924; }
+.tutorial-progress button i { color: #55564f; }
+.tutorial-side-label,.tutorial-side p { color: #62635d; }
+.tutorial-side-label { font-size: 12px; }
+.tutorial-side p { font-size: 12px; line-height: 1.75; }
+.demo-label { color: #91452f; font-size: 11px; letter-spacing: .04em; }
+.brief-preview > span,.change-compare small { color: #775445; font-size: 11px; letter-spacing: .04em; }
+.brief-preview small,.baseline-panel small { color: #62635d; font-size: 13px; }
+.requirement-row { font-size: 15px; }
+.text-action,.add-action,.tutorial-actions .skip-tour { color: #8f422c; font-size: 13px; }
+.remove-action { color: #62635d; }
+.map-node small { color: #62635d; }
+.baseline-panel ul { color: #55564f; font-size: 14px; }
+.baseline-panel > div span { color: #62635d; font-size: 13px; }
+.change-compare strong,.proposal-panel p { color: #4f504a; font-size: 14px; }
+.decision-actions button + button { color: #4f504a; }
+.tutorial-announcement { color: #28643a !important; }
+.tutorial-bottom a,.tutorial-bottom button { color: #62635d; }
+.draft-fields input::placeholder,.draft-fields textarea::placeholder { color: #696a63; }
+.tutorial-heading h1 { font-size: clamp(30px, 3.8vw, 44px); line-height: 1.3; letter-spacing: -.02em; }
+.tutorial-heading p { line-height: 1.85; }
+.tutorial-copy { min-width: 0; }
+.tutorial-copy h2 { line-height: 1.35; letter-spacing: -.02em; }
+.tutorial-copy > p { line-height: 1.85; }
+.demo-label,.brief-preview > span,.change-compare small,.baseline-panel > div { letter-spacing: .025em; }
+.brief-preview p { font-weight: 600; line-height: 1.85; }
+.brief-preview p strong { padding: 0 .12em; border-radius: .2em; color: #613b2d; background: #f8e9e1; font-weight: 700; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.brief-preview > span { animation: scene-label-in .42s ease both; }
+.brief-preview p { animation: scene-copy-in .56s cubic-bezier(.2,.72,.2,1) .18s both; }
+.brief-preview p strong { animation: brief-mark-in .45s ease both; }
+.brief-preview p strong:nth-of-type(2) { animation-delay: .42s; }
+.brief-preview p strong:nth-of-type(3) { animation-delay: .64s; }
+.brief-preview > small { display: inline-block; animation: scene-copy-in .42s ease .82s both; }
+.requirement-list { gap: 10px; }
+.requirement-row { line-height: 1.55; }
+.requirement-row:nth-of-type(1) { animation: row-assemble .48s cubic-bezier(.2,.72,.2,1) .18s both; }
+.requirement-row:nth-of-type(2) { animation: row-assemble .48s cubic-bezier(.2,.72,.2,1) .34s both; }
+.requirement-row:nth-of-type(3) { animation: row-assemble .48s cubic-bezier(.2,.72,.2,1) .50s both; }
+.requirement-row:nth-of-type(n+4) { animation: row-assemble .48s cubic-bezier(.2,.72,.2,1) .66s both; }
+.requirement-row { animation-name: row-assemble-visible; }
+.requirement-row:focus-within { opacity: 1; animation-delay: 0s; }
+.requirement-toggle { transition: transform .2s ease, background-color .2s ease; }
+.requirement-toggle:active { transform: scale(.9); }
+.text-action,.add-action,.tutorial-actions button { line-height: 1.5; }
+.interactive-map { animation: canvas-arrive .45s ease both; }
+.map-work-root { animation: root-arrive-visible .5s cubic-bezier(.2,.78,.22,1) .34s both; }
+.map-edges path { animation-duration: .68s; animation-timing-function: cubic-bezier(.4,0,.2,1); animation-delay: .82s; }
+.map-edges path:nth-child(2) { animation-delay: .98s; }
+.map-edges path:nth-child(3) { animation-delay: 1.14s; }
+.map-edges path:nth-child(4) { animation-delay: 1.30s; }
+.interactive-map:not(:has(.map-position-0)) .map-edges path { display: none; }
+.interactive-map:not(:has(.map-position-1)) .map-edges path:nth-child(n+2) { display: none; }
+.interactive-map:not(:has(.map-position-2)) .map-edges path:nth-child(n+3) { display: none; }
+.interactive-map:not(:has(.map-position-3)) .map-edges path:nth-child(n+4) { display: none; }
+.map-work-node { animation-name: node-arrive-visible; animation-duration: .48s; animation-timing-function: cubic-bezier(.2,.78,.22,1); }
+.map-position-0 { animation-delay: 1.34s; }
+.map-position-1 { animation-delay: 1.50s; }
+.map-position-2 { animation-delay: 1.66s; }
+.map-position-3 { animation-delay: 1.82s; }
+.map-work-node:focus-visible,.map-work-node:focus-within { opacity: 1; animation-delay: 0s; }
+.map-actions { animation: map-actions-settle .4s ease 2s both; }
+.baseline-panel { animation: card-arrive .55s cubic-bezier(.2,.72,.2,1) .18s both; }
+.baseline-panel li { line-height: 1.7; }
+.change-compare { animation: compare-arrive .58s cubic-bezier(.2,.72,.2,1) .15s both; }
+.change-compare > div:first-child { animation: scene-copy-in .45s ease .38s both; }
+.compare-arrow { animation: arrow-arrive .42s ease .78s both; }
+.new-request { animation: request-arrive .56s cubic-bezier(.2,.72,.2,1) .74s both; }
+.decision-actions { animation: map-actions-settle .42s ease 1.08s both; }
+.proposal-panel { animation: proposal-arrive .55s cubic-bezier(.2,.72,.2,1) both; }
+.tutorial-announcement { line-height: 1.7 !important; }
+.tutorial-completion { animation-duration: .52s; }
+.completion-mark { animation: completion-mark-in .56s cubic-bezier(.2,.85,.25,1) .18s both; }
+.tutorial-completion .demo-label { animation: scene-copy-in .4s ease .48s both; }
+.tutorial-completion h2 { line-height: 1.4; animation: scene-copy-in .48s ease .66s both; }
+.tutorial-completion > p:not(.demo-label) { line-height: 1.8; animation: scene-copy-in .48s ease .84s both; }
+.tutorial-completion .draft-form { animation: card-arrive .52s cubic-bezier(.2,.72,.2,1) 1.02s both; }
+.tutorial-restart { animation: scene-copy-in .4s ease 1.25s both; }
+.tutorial-completion:focus-within > * { opacity: 1; animation-delay: 0s; }
+.tutorial-actions { position: relative; z-index: 3; }
+@keyframes scene-label-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes scene-copy-in { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes brief-mark-in { from { color: #33342e; background: #fff; } to { color: #613b2d; background: #f8e9e1; } }
+@keyframes row-assemble { from { opacity: .25; transform: translateY(9px) scale(.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes row-assemble-visible { from { opacity: .82; transform: translateY(5px) scale(.995); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes canvas-arrive { from { opacity: .55; background-position: 7px 7px, 7px 7px; } to { opacity: 1; background-position: 0 0, 0 0; } }
+@keyframes root-arrive { from { opacity: 0; scale: .9; } to { opacity: 1; scale: 1; } }
+@keyframes root-arrive-visible { from { opacity: .88; scale: .97; } to { opacity: 1; scale: 1; } }
+@keyframes node-arrive-visible { from { opacity: .88; scale: .97; translate: 0 3px; } to { opacity: 1; scale: 1; translate: 0 0; } }
+@keyframes map-actions-settle { from { opacity: .88; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes card-arrive { from { opacity: .55; transform: translateY(12px) scale(.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes compare-arrive { from { opacity: .7; transform: translateX(14px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes arrow-arrive { from { opacity: .2; scale: .7; } to { opacity: 1; scale: 1; } }
+@keyframes request-arrive { from { opacity: .35; transform: translateX(12px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes proposal-arrive { from { opacity: .35; transform: translateY(9px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes completion-mark-in { from { opacity: .35; scale: .72; rotate: -12deg; } to { opacity: 1; scale: 1; rotate: 0deg; } }
+@media (prefers-reduced-motion: reduce) {
+  .scope-window,.map-line,.map-node,.brief-preview > *, .requirement-row,.interactive-map,.map-work-root,.map-edges path,.map-work-node,.map-actions,.baseline-panel,.change-compare,.change-compare > *, .compare-arrow,.new-request,.decision-actions,.proposal-panel,.completion-mark,.tutorial-completion > * { animation-duration: .01ms !important; animation-delay: 0ms !important; transition-duration: .01ms !important; }
+}
+@media (max-width: 760px) {
+  .tutorial-heading h1 { font-size: clamp(28px, 6vw, 38px); line-height: 1.35; }
+  .tutorial-copy h2 { line-height: 1.4; }
+  .tutorial-copy > p,.brief-preview p { line-height: 1.8; }
+  .map-actions { animation-delay: 1.75s; }
+}
+@media (max-width: 420px) {
+  .tutorial-progress button span { font-size: 9px; line-height: 1.4; }
+  .brief-preview { padding: 18px 16px; }
+  .brief-preview p { font-size: 16px; }
+  .requirement-row { min-height: 50px; }
+  .tutorial-actions .landing-primary { white-space: nowrap; }
+}

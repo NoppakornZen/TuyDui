@@ -26,12 +26,12 @@ export default function LandingPage() {
         </div>
         <div className="landing-hero-visual" aria-label="TuyDui scope map preview">
           <div className="scope-window">
-            <div className="scope-window-top"><span /><span /><span /><b>{locale === 'th' ? 'แผนผังโปรเจกต์' : 'PROJECT MAP'}</b><i>•••</i></div>
+            <div className="scope-window-top"><span /><span /><span /><b>{locale === 'th' ? 'แผนผังโปรเจกต์' : 'PROJECT MAP'}</b><small className="preview-brief-chip">{locale === 'th' ? 'จากบรีฟร้านกาแฟ' : 'FROM COFFEE SHOP BRIEF'}</small><i>•••</i></div>
             <div className="scope-map-grid">
               <div className="map-line line-one" /><div className="map-line line-two" /><div className="map-line line-three" />
               <div className="map-node node-main"><small>{locale === 'th' ? 'โปรเจกต์' : 'PROJECT'}</small><strong>Coffee shop site</strong><em>{locale === 'th' ? 'กำลังดำเนินการ' : 'On track'}</em></div>
               <div className="map-node node-one"><small>{locale === 'th' ? 'รายการงาน' : 'REQUIREMENT'}</small><strong>Editable menu</strong><em className="green">{locale === 'th' ? 'อยู่ในแผนเดิม' : 'In scope'}</em></div>
-              <div className="map-node node-two"><small>{locale === 'th' ? 'คำขอใหม่' : 'NEW REQUEST'}</small><strong>Loyalty points</strong><em className="orange">{locale === 'th' ? 'รอตัดสินใจ' : 'Needs a decision'}</em></div>
+              <div className="map-node node-two"><small>{locale === 'th' ? 'บรีฟใหม่ · ข้อเสนอ' : 'NEW BRIEF · PROPOSAL'}</small><strong>{locale === 'th' ? 'ระบบสมาชิกและสะสมแต้ม' : 'Members & loyalty points'}</strong><em className="orange">{locale === 'th' ? 'เสนอปรับแผน' : 'Proposed update'}</em></div>
               <div className="map-node node-three"><small>{locale === 'th' ? 'สิ่งที่จะส่งมอบ' : 'DELIVERABLE'}</small><strong>Ordering flow</strong><em className="green">{locale === 'th' ? 'อยู่ในแผนเดิม' : 'In scope'}</em></div>
             </div>
             <div className="scope-window-footer"><span><i className="dot-green" />{locale === 'th' ? 'ยืนยันแผนแล้ว' : 'Baseline confirmed'}</span><b>3 {locale === 'th' ? 'รายการงาน' : 'requirements'}</b></div>

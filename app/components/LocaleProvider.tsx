@@ -9,7 +9,7 @@ const dictionaries = {
     nav: { how: 'วิธีทำงาน', tutorial: 'ลองใช้ตัวอย่าง', signIn: 'เข้าสู่ระบบ', start: 'เริ่มร่างโปรเจกต์' },
     landing: {
       eyebrow: 'จากบรีฟลูกค้า สู่แผนงานที่แก้ไขได้',
-      title: 'เปลี่ยนบรีฟ\nเป็นแผนที่แก้ไขได้',
+      title: 'จากบรีฟ สู่แผนงาน\nที่แก้ไขและอัปเดตได้ตลอด',
       description: 'TuyDui ช่วยแปลงบรีฟเป็นรายการงานและแผนผังโปรเจกต์ที่แก้ไขได้ พร้อมเสนอทางเลือกเมื่อมีคำขอใหม่ระหว่างทาง',
       primary: 'ลองใช้ TuyDui',
       secondary: 'เริ่มร่างโปรเจกต์',
@@ -44,7 +44,7 @@ const dictionaries = {
     nav: { how: 'How it works', tutorial: 'Try the example', signIn: 'Sign in', start: 'Start a project draft' },
     landing: {
       eyebrow: 'From client brief to an editable plan',
-      title: 'Turn a brief\ninto a plan you can edit',
+      title: 'From brief to a plan\nyou can keep updating',
       description: 'TuyDui turns a brief into editable work items and a project map, then helps you review new requests as the project evolves.',
       primary: 'Try TuyDui', secondary: 'Start a project draft',
       note: 'This is a sample flow. It does not call live AI or create project data.',
