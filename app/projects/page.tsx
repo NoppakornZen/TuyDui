@@ -8,6 +8,7 @@ import LanguageToggle from '../components/LanguageToggle';
 import { useLocale } from '../components/LocaleProvider';
 import { clearProjectDraft, readProjectDraft } from '../../src/lib/draft';
 import { FREE_PROJECT_LIMIT, isFreeProjectLimitError } from '../../src/domain/project-quota';
+import { loadProjectList, projectCreateErrorMessage, verifyCreatedProject } from '../../src/lib/project-queries';
 import './projects.css';
 
 type Project = {
@@ -33,6 +34,8 @@ export default function ProjectsPage() {
   const [clientName, setClientName] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
+  const [dataWarning, setDataWarning] = useState('');
+  const [quotaConflict, setQuotaConflict] = useState(false);
   const [profileMark, setProfileMark] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [draftRestored, setDraftRestored] = useState(false);
@@ -79,41 +82,14 @@ export default function ProjectsPage() {
         setShowModal(true);
       }
 
-      const { data: owned, error: ownedError } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('owner_id', user.id)
-        .order('updated_at', { ascending: false });
-
-      if (ownedError) throw ownedError;
-
-      setOwnerProjectCount(owned?.length ?? 0);
-
-      const { data: memberships, error: memberError } = await supabase
-        .from('project_members')
-        .select('project_id, projects(*)')
-        .eq('user_id', user.id)
-        .not('accepted_at', 'is', null);
-
-      if (memberError) throw memberError;
-
-      const ownedIds = new Set((owned ?? []).map((project) => project.id));
-      const shared = (memberships ?? [])
-        .map((row) => {
-          const project = Array.isArray(row.projects) ? row.projects[0] : row.projects;
-          return project as Omit<Project, 'access'> | null;
-        })
-        .filter((project): project is Omit<Project, 'access'> => !!project && !ownedIds.has(project.id))
-        .map((project) => ({ ...project, access: 'shared' as const }));
-
-      const all = [
-        ...(owned ?? []).map((project) => ({ ...project, access: 'owner' as const })),
-        ...shared,
-      ].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
-
-      setProjects(all);
+      const result = await loadProjectList(supabase, user.id);
+      setOwnerProjectCount(result.ownerProjectCount);
+      setProjects(result.projects);
+      setDataWarning(result.sharedLoadWarning ? t.projects.sharedLoadWarning : '');
+      setQuotaConflict((current) => current && result.projects.length === 0);
     } catch (err) {
       console.error('Failed to load projects:', err);
+      setProjects([]);
       setError(t.projects.loadError);
     } finally {
       setLoading(false);
@@ -142,7 +118,9 @@ export default function ProjectsPage() {
       if (createError) {
         if (isFreeProjectLimitError(createError)) {
           setShowModal(false);
+          setQuotaConflict(true);
           setShowQuotaModal(true);
+          await loadProjects();
           setCreating(false);
           return;
         }
@@ -154,11 +132,15 @@ export default function ProjectsPage() {
         throw new Error('Project creation returned no project.');
       }
 
+      // Do not claim success or open a workspace until the current session can
+      // read the row back through the same RLS path used by the app.
+      await verifyCreatedProject(supabase, user.id, created.id);
+
       clearProjectDraft();
 
       router.push(`/workspace/${created.id}`);
     } catch (err) {
-      setError(err instanceof Error && err.message ? err.message : t.projects.createError);
+      setError(projectCreateErrorMessage(err, t.projects.createError));
       setCreating(false);
     }
   }
@@ -203,6 +185,8 @@ export default function ProjectsPage() {
 
       <div className="projects-container">
         {draftRestored && <div className="draft-restored-banner">✓ {t.projects.restored}</div>}
+        {dataWarning && <div className="projects-data-warning" role="status">{dataWarning}</div>}
+        {error && !showModal && <div className="projects-load-error" role="alert">{error}<button type="button" onClick={loadProjects}>{t.projects.retry}</button></div>}
         <div className="projects-header">
           <div>
             <div className="projects-kicker"><span /> {t.projects.workspace}</div>
@@ -231,11 +215,9 @@ export default function ProjectsPage() {
         ) : projects.length === 0 ? (
           <div className="projects-empty">
             <div className="empty-icon">📁</div>
-            <h2>{t.projects.empty}</h2>
-            <p>{t.projects.emptyBody}</p>
-            <button className="button-primary" onClick={openCreateModal}>
-              {t.projects.createFirst}
-            </button>
+            <h2>{quotaConflict ? t.projects.quotaEmptyTitle : t.projects.empty}</h2>
+            <p>{quotaConflict ? t.projects.quotaEmptyBody : t.projects.emptyBody}</p>
+            {quotaConflict ? <button className="button-light" onClick={loadProjects}>{t.projects.retry}</button> : <button className="button-primary" onClick={openCreateModal}>{t.projects.createFirst}</button>}
           </div>
         ) : (
           <div className="projects-grid">
@@ -353,7 +335,7 @@ export default function ProjectsPage() {
             <div className="quota-modal-copy">
               <p className="quota-modal-kicker">{locale === 'th' ? 'สิทธิ์ทดลองใช้งาน' : 'FREE TRIAL'}</p>
               <h2 id="quota-modal-title">{t.projects.quotaTitle}</h2>
-              <p>{t.projects.quotaBody}</p>
+            <p>{quotaConflict && projects.length === 0 ? t.projects.quotaEmptyBody : t.projects.quotaBody}</p>
             </div>
             <div className="planned-package">
               <span>{t.projects.plannedLabel}</span>

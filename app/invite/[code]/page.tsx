@@ -71,6 +71,7 @@ export default function InvitePage() {
   return (
     <div className="invite-page">
       <div className="invite-container">
+        <div className="invite-brand brand-wordmark">Tuy<span className="wordmark-accent">Dui</span></div>
         {loading ? (
           <div className="invite-loading">
             <div className="spinner" />

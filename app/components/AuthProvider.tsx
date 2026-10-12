@@ -56,25 +56,15 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     }
   }
 
-  async function handleSignOut() {
-    try {
-      const { supabase } = await import('../../src/lib/supabase');
-      await supabase.auth.signOut();
-      router.push('/login');
-    } catch (error) {
-      console.error('Sign out failed:', error);
-    }
-  }
-
   if (!mounted || loading) {
     return (
       <div style={{
         minHeight: '100vh',
-        background: '#0A0D12',
+        background: '#f8f7f3',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        color: '#fff'
+        color: '#282924'
       }}>
         {t.common.loading}
       </div>
@@ -85,37 +75,5 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     return null;
   }
 
-  return (
-    <div>
-      {user && !isPublicPath(pathname) && (
-        <div style={{
-          background: '#0F131C',
-          borderBottom: '1px solid #1E2636',
-          padding: '0.75rem 1.5rem',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <div style={{ color: '#9CA3AF', fontSize: '0.875rem' }}>
-            {user.email}
-          </div>
-          <button
-            onClick={handleSignOut}
-            style={{
-              background: 'transparent',
-              border: '1px solid #374151',
-              borderRadius: '6px',
-              padding: '0.5rem 1rem',
-              color: '#D1D5DB',
-              fontSize: '0.875rem',
-              cursor: 'pointer'
-            }}
-          >
-            {t.projects.signOut}
-          </button>
-        </div>
-      )}
-      {children}
-    </div>
-  );
+  return <>{children}</>;
 }

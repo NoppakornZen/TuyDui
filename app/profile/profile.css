@@ -222,3 +222,20 @@ body {
   .profile-wrap { padding: 36px 16px 64px; }
   .profile-wrap h1 { font-size: 30px; }
 }
+
+/* Shared TuyDui light surface: the account page should feel like Projects. */
+.profile-app { background: #f8f7f3; color: #282924; }
+.profile-topbar { background: rgba(255,254,250,.94); border-bottom-color: #deddd7; }
+.profile-brand { color: #282924; }
+.profile-back { color: #5f605a; background: #fffefa; border-color: #d3d1c9; }
+.profile-back:hover { color: #a64e32; background: #fff6f1; border-color: #b85b3c; }
+.profile-kicker { color: #777870; }
+.profile-card { background: #fffefa; border-color: #deddd7; box-shadow: 0 18px 45px rgba(60,49,36,.08); }
+.profile-identity { border-bottom-color: #deddd7; }
+.profile-identity small,.profile-photo-label,.profile-note { color: #686963; }
+.profile-card label { color: #454640; }
+.profile-card input { color: #282924; background: #fff; border-color: #d6d4cc; }
+.profile-card input::placeholder { color: #9a9b94; }
+.profile-status { color: #686963; }
+.profile-error { color: #a23f2a; }
+.profile-actions span { color: #34764a; }

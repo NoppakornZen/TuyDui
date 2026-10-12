@@ -498,3 +498,27 @@
     width: 100%;
   }
 }
+
+/* Shared TuyDui light surface. */
+.share-modal-overlay { background: rgba(40,35,29,.58); }
+.share-modal { background: #fffefa; border-color: #deddd7; box-shadow: 0 24px 80px rgba(60,49,36,.22); }
+.share-modal-header { background: #f8f7f3; border-bottom-color: #deddd7; }
+.share-modal-header h2 { color: #282924; }
+.share-modal-close { color: #777870; background: #fff; border-color: #d3d1c9; }
+.share-modal-close:hover { color: #963f2b; background: #f6e9e3; border-color: #d5a08f; }
+.share-section-title { color: #775445; }
+.share-section-subtitle,.role-option-desc,.invite-link-meta { color: #686963; }
+.invite-link-card { background: #fff6f1; border-color: #ead6cd; }
+.invite-link-card:hover { background: #fff1e9; border-color: #d5a08f; }
+.invite-role-badge.editor { color: #9a4b33; background: #fff1e9; border-color: #e8c6b8; }
+.invite-role-badge.viewer { color: #686963; background: #fff; border-color: #d3d1c9; }
+.invite-link-url { background: #fff; border-color: #deddd7; }
+.invite-link-url input { color: #454640; }
+.delete-invite-btn { color: #a23f2a; }
+.role-option { background: #fff; border-color: #deddd7; }
+.role-option:hover,.role-option.selected { background: #fff6f1; border-color: #b85b3c; }
+.role-option-title { color: #282924; }
+.member-card { background: #fff; border-color: #deddd7; }
+.member-card:hover { background: #fff6f1; border-color: #ead6cd; }
+.member-info strong { color: #282924; }
+.member-info span { color: #686963; }

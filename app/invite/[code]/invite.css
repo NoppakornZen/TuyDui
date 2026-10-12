@@ -318,3 +318,23 @@
     height: 56px;
   }
 }
+
+/* Shared TuyDui light surface. */
+.invite-page { background: #f8f7f3; color: #282924; }
+.invite-container { background: #fffefa; border-color: #deddd7; box-shadow: 0 24px 80px rgba(60,49,36,.16); }
+.invite-loading p,.invite-error p,.permission-title,.detail-label { color: #686963; }
+.invite-error h1,.invite-content h1 { color: #282924; }
+.invite-icon { color: #b85b3c; }
+.project-name { color: #9a4b33; background: #fff6f1; border-color: #ead6cd; }
+.invite-details { background: #f8f7f3; border-color: #deddd7; }
+.detail-row { border-bottom-color: #deddd7; }
+.role-badge.editor { color: #9a4b33; background: #fff1e9; border-color: #e8c6b8; }
+.role-badge.viewer { color: #686963; background: #fff; border-color: #d3d1c9; }
+.permission-item { background: #fffefa; border-color: #e4e1d8; }
+.permission-item:hover { background: #fff6f1; border-color: #ead6cd; }
+.permission-item span { color: #454640; }
+.permission-item.disabled span { color: #9a9b94; }
+.permission-item svg { color: #4f875e; }
+.button-secondary { color: #5f605a; background: #fff; border-color: #d3d1c9; }
+.button-secondary:hover { background: #fff6f1; border-color: #b85b3c; }
+.invite-brand { margin-bottom: 30px; color: #282924; font-size: 22px; text-align: center; }
