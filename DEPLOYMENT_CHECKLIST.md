@@ -1,5 +1,9 @@
 # Production Deployment Checklist
 
+> Deploy `frontend/` as Next.js and `backend/` as a separate Node.js service.
+> Set private keys only on the backend and set `BACKEND_URL` on the frontend before building.
+> See the README in each directory. The checklist below describes the earlier deployment.
+
 ## ✅ สิ่งที่ทำเสร็จแล้วในโค้ด
 
 ### 1. Authentication & Authorization

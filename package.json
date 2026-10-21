@@ -3,25 +3,21 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "workspaces": ["frontend", "backend"],
+  "engines": { "node": ">=22.14.0" },
   "scripts": {
-    "check": "tsc --noEmit",
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "qa:project-flow": "tsx scripts/qa-project-flow.ts"
+    "setup:env": "node scripts/setup-env.mjs",
+    "check": "npm run check --workspaces",
+    "dev": "node scripts/dev.mjs",
+    "dev:frontend": "npm run dev --workspace frontend",
+    "dev:backend": "npm run dev --workspace backend",
+    "build": "npm run build --workspaces",
+    "start": "node scripts/dev.mjs --production",
+    "start:frontend": "npm run start --workspace frontend",
+    "start:backend": "npm run start --workspace backend",
+    "test": "npm run test --workspace backend && npm run qa:project-flow",
+    "qa:project-flow": "npm run qa:project-flow --workspace frontend"
   },
-  "dependencies": {
-    "@supabase/supabase-js": "^2.117.2",
-    "next": "^16.3.8",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
-    "unpdf": "^1.8.1"
-  },
-  "devDependencies": {
-    "@types/node": "^22.0.0",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "tsx": "^4.23.15",
-    "typescript": "^5.9.3"
-  }
+  "dependencies": {},
+  "devDependencies": {}
 }

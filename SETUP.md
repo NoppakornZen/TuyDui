@@ -1,5 +1,9 @@
 # Setup Guide - TuyDui Production Deployment
 
+> Project layout changed: the UI is in `frontend/` and the API is in `backend/`.
+> Use [frontend/README.md](frontend/README.md) and [backend/README.md](backend/README.md)
+> for current setup and deployment. The instructions below describe the earlier deployment.
+
 ## ✅ สิ่งที่ทำเสร็จแล้ว
 
 1. ✅ ติดตั้ง Supabase integration บน Vercel
