@@ -92,3 +92,4 @@
 .workspace-sync-status button { margin-left: 8px; }
 .workspace-main { min-width: 0; }
 .ai-composer label,.ai-proposals p,.review-result p { color: #686963; }
+/* Handoff QA: frontend-only PR workflow probe; no visual or behavior change. */
