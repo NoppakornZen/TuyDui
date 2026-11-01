@@ -3,8 +3,13 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "workspaces": ["frontend", "backend"],
-  "engines": { "node": ">=22.14.0" },
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "engines": {
+    "node": ">=22.14.0"
+  },
   "scripts": {
     "setup:env": "node scripts/setup-env.mjs",
     "check": "npm run check --workspaces",
@@ -15,9 +20,17 @@
     "start": "node scripts/dev.mjs --production",
     "start:frontend": "npm run start --workspace frontend",
     "start:backend": "npm run start --workspace backend",
-    "test": "npm run test --workspace backend && npm run qa:project-flow",
-    "qa:project-flow": "npm run qa:project-flow --workspace frontend"
+    "test": "npm run test --workspace backend && npm run qa:project-flow && npm run test:frontend && npm run test:contracts",
+    "qa:project-flow": "npm run qa:project-flow --workspace frontend",
+    "test:frontend": "node --import tsx --test frontend/scripts/*.test.ts",
+    "test:contracts": "node --import tsx --test tests/*.test.mjs",
+    "test:e2e": "playwright test",
+    "test:staging": "node scripts/staging-smoke.mjs",
+    "test:staging:flow": "node scripts/staging-flow.mjs",
+    "security:secrets": "node scripts/check-secrets.mjs"
   },
-  "dependencies": {},
-  "devDependencies": {}
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.14",
+    "@playwright/test": "^1.64.1"
+  }
 }

@@ -5,6 +5,7 @@ import * as ai from './routes/ai.js';
 import * as documents from './routes/documents.js';
 import * as changes from './routes/changes.js';
 import * as analyzeChange from './routes/analyze-change.js';
+import * as workspace from './routes/workspace.js';
 
 type Handler = (request: Request) => Response | Promise<Response>;
 const routes: Record<string, Record<string, Handler>> = {
@@ -13,6 +14,7 @@ const routes: Record<string, Record<string, Handler>> = {
   '/api/documents': { POST: documents.POST },
   '/api/changes': { POST: changes.POST },
   '/api/ai/analyze-change': { POST: analyzeChange.POST },
+  '/api/workspace': { GET: workspace.GET, PUT: workspace.PUT },
 };
 
 export function createApiServer(maxBodyBytes = 13 * 1024 * 1024) {
@@ -60,6 +62,8 @@ export function createApiServer(maxBodyBytes = 13 * 1024 * 1024) {
         }
       }
       outgoing.statusCode = response.status;
+      outgoing.setHeader('Cache-Control', 'no-store');
+      outgoing.setHeader('X-Content-Type-Options', 'nosniff');
       response.headers.forEach((value, name) => outgoing.setHeader(name, value));
       if (response.body) await pipeline(Readable.fromWeb(response.body as import('node:stream/web').ReadableStream), outgoing);
       else outgoing.end();

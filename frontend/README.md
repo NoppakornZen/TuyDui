@@ -1,25 +1,26 @@
 # TuyDui frontend
 
-Next.js UI, browser authentication, project collaboration, and static assets.
-Install dependencies from the repository root with `npm install`, then run
-`npm run setup:env` to create local configuration without replacing existing files.
+Next.js presentation, browser Supabase auth/RLS, and same-origin API client.
+See [Frontend handoff](../docs/FRONTEND_HANDOFF.md) for the complete current workflow.
 
-```bash
-cd frontend
-npm run dev
+Install from repository root with `npm ci`. Copy `.env.example` to `.env.local` in
+this directory using approved staging values. Never expose server credentials.
+
+```sh
+npm run dev:frontend
+npm run check --workspace frontend
+npm run build --workspace frontend
+npm run start:frontend
 ```
 
-Open http://localhost:3000. Run the backend in another terminal on port 4000.
-`BACKEND_URL` in `.env.local` points the `/api/*` proxy at that backend. Set it
-to the deployed backend URL before a production build. Browser requests stay
-on the frontend origin and carry the Supabase bearer token through the proxy.
+Default UI: localhost:3000. Default backend proxy target: localhost:4000.
+Set server-only `BACKEND_URL` before building; Vercel builds require explicit HTTPS.
+Browser APIs go through `src/lib/api.ts`, which supplies the current Supabase token.
+Protected browser routes use AuthProvider and Google callback `/auth/callback`.
+Shared state uses `workspace-repository.ts` and `use-workspace-sync.ts`; preserve
+this wiring during layout changes. Local storage is a retained recovery cache.
 
-Only public Supabase configuration belongs here. AI keys and the Supabase
-service role key belong in `backend/.env.local`.
+[API contract](../docs/API_CONTRACT.md) · [Deployment runbook](../docs/DEPLOYMENT_RUNBOOK.md)
 
-`npm run check` checks types. `npm run build` builds the frontend.
-`npm start` serves that production build. Deploy with this directory as the
-Next.js project root and install dependencies using the root workspace lockfile.
-
-Project data still uses the Supabase browser SDK and its RLS policies, as in the
-existing application. The separate backend owns AI, PDF processing, and admin credentials.
+Candidate split branch requires owner adoption. Neither passing local builds nor
+fixture-based browser tests prove production or live staging integration is ready.

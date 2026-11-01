@@ -82,7 +82,13 @@
 .ai-error { color: #a23f2a; }
 
 @media (max-width: 700px) {
-  .workspace-topbar { padding: 0 16px; }
+  .workspace-topbar { padding: 12px 16px; gap: 8px; height: auto; min-height: 72px; flex-wrap: wrap; }
+  .workspace-topbar > .button-light { margin-right: 0 !important; }
   .workspace-account span { display: none; }
   .workspace-layout { background: #f8f7f3; }
 }
+
+.workspace-sync-status { padding: 6px 16px; font-size: 12px; overflow-wrap: anywhere; }
+.workspace-sync-status button { margin-left: 8px; }
+.workspace-main { min-width: 0; }
+.ai-composer label,.ai-proposals p,.review-result p { color: #686963; }

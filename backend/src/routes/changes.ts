@@ -1,13 +1,9 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import path from 'node:path';
 import type { Requirement } from '../domain/models.js';
 import { AIRequestError, createAIProvider } from '../services/ai/maxplus.js';
-import { extractPdfText } from '../services/pdf/extract-text.js';
-import { requireAuth, checkRateLimit, recordUsage } from '../lib/rate-limit.js';
+import { requireAuth, reserveUsage } from '../lib/rate-limit.js';
+import { requireProjectAccess, hasCrossProjectData, type ProjectAccess } from '../lib/project-access.js';
+import { storePdf, DocumentUploadLimitError } from '../services/documents.js';
 
-
-const MAX_BYTES = 12 * 1024 * 1024;
-const root = path.join(process.cwd(), 'data', 'documents');
 
 export async function POST(request: Request) {
   // Check authentication
@@ -15,24 +11,21 @@ export async function POST(request: Request) {
   if (auth instanceof Response) return auth;
   const { userId } = auth;
 
-  // Check rate limit
-  const rateLimit = await checkRateLimit(userId, 'FREE');
-  if (!rateLimit.allowed) {
-    return Response.json({
-      error: `Rate limit exceeded. Try again in ${rateLimit.resetIn} seconds.`,
-      resetIn: rateLimit.resetIn
-    }, { status: 429 });
-  }
-
   const contentType = request.headers.get('content-type') ?? '';
   try {
-    const incoming = contentType.includes('multipart/form-data') ? await fromForm(request) : await fromJson(request);
+    const form = contentType.includes('multipart/form-data') ? await request.formData() : null;
+    const body = form ? JSON.parse(text(form.get('context')) || '{}') : await request.json();
+    const projectId = text(body?.projectId) || text(form?.get('projectId'));
+    const access = await requireProjectAccess(request, projectId);
+    if (access instanceof Response) return access;
+    if (hasCrossProjectData(body, access.projectId)) return Response.json({ error: 'Cross-project data is not allowed.' }, { status: 400 });
+    const limited = await reserveUsage(access, 'review_change');
+    if (limited) return limited;
+    const incoming = form ? await fromForm(form, body, access) : fromJson(body);
     if (!incoming.text) return Response.json({ error: 'Paste a brief or send a PDF.' }, { status: 400 });
 
-    // Record usage before AI call
-    await recordUsage(userId, 'review_change');
-
     const result = await createAIProvider().reviewChange({
+      userId,
       projectId: incoming.projectId,
       rawRequest: incoming.text,
       currentRequirements: incoming.requirements,
@@ -41,13 +34,13 @@ export async function POST(request: Request) {
     });
     return Response.json({ proposalOnly: true, document: incoming.document, ...result });
   } catch (error) {
-    const status = error instanceof AIRequestError ? 502 : error instanceof Error && /is required|must be|JSON/.test(error.message) ? 400 : 422;
+    if (error instanceof DocumentUploadLimitError) return Response.json({ error: error.message, resetIn: 3600 }, { status: 429, headers: { 'Retry-After': '3600' } });
+    const status = error instanceof Error && ['TimeoutError','AbortError'].includes(error.name) ? 504 : error instanceof AIRequestError ? 502 : error instanceof Error && /unavailable|not configured/.test(error.message) ? 503 : error instanceof Error && /is required|must be|JSON|PDF/.test(error.message) ? 400 : 422;
     return Response.json({ error: error instanceof Error ? error.message : 'AI request failed.' }, { status });
   }
 }
 
-async function fromJson(request: Request) {
-  const body = await request.json().catch(() => null) as Record<string, unknown> | null;
+function fromJson(body: Record<string, unknown> | null) {
   if (!body) throw new Error('JSON body is required.');
   return {
     projectId: text(body.projectId) || 'project',
@@ -59,14 +52,12 @@ async function fromJson(request: Request) {
   };
 }
 
-async function fromForm(request: Request) {
-  const form = await request.formData();
-  const context = JSON.parse(text(form.get('context')) || '{}') as Record<string, unknown>;
+async function fromForm(form: FormData, context: Record<string, unknown>, access: ProjectAccess) {
   const file = form.get('file');
   let pdfText = '';
   let document: { id: string; name: string; version: number } | undefined;
   if (file instanceof File && file.size > 0) {
-    const stored = await storePdf(file, text(context.projectId) || 'project');
+    const stored = await storePdf(file, access);
     pdfText = stored.text;
     document = stored.document;
   }
@@ -79,27 +70,6 @@ async function fromForm(request: Request) {
     members: membersOf(context.members),
     document,
   };
-}
-
-async function storePdf(file: File, projectId: string) {
-  const name = file.name.trim() || 'change.pdf';
-  if (!name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') throw new Error('Only a PDF brief can be read here.');
-  if (file.size > MAX_BYTES) throw new Error('PDF must be 12 MB or smaller.');
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  if (String.fromCharCode(...bytes.slice(0, 5)) !== '%PDF-') throw new Error('That file is not a PDF.');
-  const extracted = await extractPdfText(bytes);
-  const manifest = await readManifest();
-  const version = manifest.filter((item) => item.projectId === projectId).length + 1;
-  const id = `DOC-${Date.now()}`;
-  const document = { id, projectId, name, version, pageCount: extracted.pages.length, uploadedAt: new Date().toISOString() };
-  try {
-    await mkdir(root, { recursive: true });
-    await writeFile(path.join(root, `${id}.pdf`), Buffer.from(bytes));
-    await writeFile(path.join(root, 'manifest.json'), JSON.stringify([...manifest, document], null, 2));
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'EROFS' && (error as NodeJS.ErrnoException).code !== 'EPERM') throw error;
-  }
-  return { text: extracted.text, document: { id, name, version } };
 }
 
 function text(value: unknown): string {
@@ -144,13 +114,4 @@ function membersOf(value: unknown) {
     if (!text(row.id) || !text(row.name)) return [];
     return [{ id: text(row.id), name: text(row.name), role: text(row.role) }];
   });
-}
-
-async function readManifest(): Promise<Array<{ projectId: string }>> {
-  try {
-    const parsed: unknown = JSON.parse(await readFile(path.join(root, 'manifest.json'), 'utf8'));
-    return Array.isArray(parsed) ? parsed.filter((item) => item && typeof item === 'object') as Array<{ projectId: string }> : [];
-  } catch {
-    return [];
-  }
 }

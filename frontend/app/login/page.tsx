@@ -24,11 +24,10 @@ export default function LoginPage() {
   async function handleGoogleSignIn() {
     try {
       setLoading(true); setError('');
-      const { supabase } = await import('../../src/lib/supabase');
+      const { signInWithGoogle } = await import('../../src/lib/auth');
       const next = nextPath();
       if (next) window.localStorage.setItem('tuydui-after-login', next);
-      const { error: signInError } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: `${window.location.origin}/projects` } });
-      if (signInError) throw signInError;
+      await signInWithGoogle();
     } catch (err) {
       const message = err instanceof Error ? err.message : '';
       setError(message.includes('supabaseUrl') || message.includes('Supabase') ? t.login.error : (message || t.login.error)); setLoading(false);

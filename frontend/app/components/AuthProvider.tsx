@@ -6,7 +6,6 @@ import { useLocale } from './LocaleProvider';
 
 const PUBLIC_PATHS = ['/','/tutorial','/login','/auth/callback'];
 const isPublicPath = (pathname: string) => PUBLIC_PATHS.includes(pathname) || pathname.startsWith('/_next');
-const isQuotaPreviewPath = (pathname: string) => pathname === '/projects' && typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('preview') === 'quota';
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any>(null);
@@ -21,8 +20,25 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     void checkUser(pathname);
   }, [pathname]);
 
+  useEffect(() => {
+    let cancelled = false;
+    let unsubscribe: (() => void) | undefined;
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      void import('../../src/lib/supabase').then(({ supabase }) => {
+        if (cancelled) return;
+        const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+          if (cancelled) return;
+          setUser(session?.user ?? null);
+          if (!session && !isPublicPath(pathname)) router.replace('/login');
+        });
+        unsubscribe = () => data.subscription.unsubscribe();
+      });
+    }
+    return () => { cancelled = true; unsubscribe?.(); };
+  }, [pathname, router]);
+
   async function checkUser(currentPath: string) {
-    if (isPublicPath(currentPath) || isQuotaPreviewPath(currentPath)) {
+    if (isPublicPath(currentPath)) {
       setUser(null);
       setLoading(false);
       return;
@@ -71,7 +87,7 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
     );
   }
 
-  if (!user && !isPublicPath(pathname) && !isQuotaPreviewPath(pathname)) {
+  if (!user && !isPublicPath(pathname)) {
     return null;
   }
 

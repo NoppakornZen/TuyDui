@@ -10,7 +10,7 @@ for (const directory of ['frontend', 'backend']) {
   const example = await readFile(new URL(`${directory}/.env.example`, root), 'utf8');
   const values = parseEnv(example);
   for (const key of Object.keys(values)) {
-    const oldKey = key === 'SUPABASE_URL' ? 'NEXT_PUBLIC_SUPABASE_URL' : key;
+    const oldKey = key === 'SUPABASE_URL' ? 'NEXT_PUBLIC_SUPABASE_URL' : key === 'SUPABASE_ANON_KEY' ? 'NEXT_PUBLIC_SUPABASE_ANON_KEY' : key;
     if (previous[oldKey] !== undefined) values[key] = previous[oldKey];
   }
   if (directory === 'backend') {
