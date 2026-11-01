@@ -7,6 +7,7 @@ Team adoption, live staging acceptance and credential rotation remain release ga
 
 ## Start here
 
+- [Final handoff QA verification](docs/QA_REPORT.md): fresh-clone results, frontend-only PR evidence and current blockers.
 - [Frontend handoff](docs/FRONTEND_HANDOFF.md): clone, environment names, commands, edit boundaries and PR workflow.
 - [API/Supabase contract](docs/API_CONTRACT.md): bearer auth, project access, stable schemas and state persistence.
 - [Deployment and rollback](docs/DEPLOYMENT_RUNBOOK.md): isolated staging, migrations, hosting and release gates.

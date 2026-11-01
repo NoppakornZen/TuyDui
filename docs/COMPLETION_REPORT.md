@@ -1,5 +1,9 @@
 # TuyDui integration completion report — 2026-11-01
 
+Later verification: [QA_REPORT.md](QA_REPORT.md) records a new remote clone,
+frontend-only PR CI, current source/deployment facts and final readiness gates.
+Use it for current readiness; this report retains implementation provenance.
+
 ## Delivery and verdict
 
 The local split development baseline is implemented and verified. Full handoff and

@@ -1,86 +1,169 @@
-# Frontend redesign V3 handoff
+# TuyDui — Frontend Redesign V3 handoff
 
-Candidate repository: `https://github.com/NoppakornZen/TuyDui`.
-Candidate canonical branch: `integration/frontend-handoff-2026-11-01`.
-Base split commit: `50c5e85` (full hash and final delivery commit in completion report).
-**Team adoption and staging acceptance are required before calling this the canonical branch.**
-Do not merge unrelated `main` history into this branch.
+Verified 2026-11-01. Read [QA_REPORT.md](QA_REPORT.md) for evidence and gates.
+Clean-clone QA and a real frontend-only PR passed. Approved staging configuration,
+team adoption and live acceptance remain missing; fixture success is not live acceptance.
+
+## A. Source and Git
+
+- Repository: `https://github.com/NoppakornZen/TuyDui`.
+- Designated handoff candidate: `integration/frontend-handoff-2026-11-01`.
+  Owner must adopt it as canonical. Default branch is still unrelated `main`;
+  its latest QA commit adds generated artifacts, not the split source integration.
+- Verified application/base SHA: `ac5acda2038f1d7f0e9d17dc033318103b53363b`.
+  Split ancestor: `50c5e85684750a1c94a7ab1140703108c26891ef`.
+  Later documentation commits preserve that application behavior and rerun CI.
+- Create `frontend/redesign-v3`; PR target is the adopted integration branch above.
+  Integration review PR #1 targets `feat/uxui-redesign` and remains draft/unmerged.
+
+MacBook zsh/bash commands (clone split directly, avoiding main's historical env files):
 
 ```sh
-git clone https://github.com/NoppakornZen/TuyDui.git
+git clone --single-branch --branch integration/frontend-handoff-2026-11-01 https://github.com/NoppakornZen/TuyDui.git TuyDui
 cd TuyDui
-git checkout integration/frontend-handoff-2026-11-01
+git rev-parse HEAD
 git switch -c frontend/redesign-v3
+node --version
 npm ci
 ```
 
-Use Node.js 24 (tested) or supported Node >=22.14. Copy `frontend/.env.example`
-and `backend/.env.example` to `.env.local` inside each directory; enter values from
-the team's approved **staging** secret store. Never copy the exposed historical env files.
-`npm run setup:env` can copy an existing trusted local config without replacing
-files, but is inappropriate for unreviewed old/exposed credentials.
-
-Frontend vars: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
-`NEXT_PUBLIC_APP_URL`, server-only `BACKEND_URL` (default localhost:4000).
-Backend vars: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `AI_PROVIDER`, `AI_MODEL`,
-`MAXPLUSAI_API_KEY`, `MAXPLUSAI_BASE_URL`, `MAXPLUSAI_POOL`, `PORT`, `HOST`.
-Service-role/admin/billing credentials are never required by a frontend developer.
-Only the MaxPlus provider is currently implemented; other key names in the example
-do not mean those providers are operational.
+Install Node **24 LTS** first with your approved manager. Verified Windows Node
+24.16.0/npm 11.13.0 and Node 24 Linux CI; macOS itself was NOT TESTED.
+To receive backend updates on the same history:
 
 ```sh
-npm run dev:backend     # terminal 1, localhost:4000
-npm run dev:frontend    # terminal 2, localhost:3000
-# Or set BACKEND_URL to the approved HTTPS staging backend before frontend build/dev.
+git fetch origin
+git switch frontend/redesign-v3
+git merge origin/integration/frontend-handoff-2026-11-01
+npm ci
+npm run check
+npm test
+```
+
+Resolve conflicts with the integration owner and rerun QA. Never merge unrelated
+main, force push or use `--allow-unrelated-histories`.
+
+## B. Real local/staging connection
+
+Paths: `frontend/` and `backend/`. From repository root:
+
+```sh
+cp frontend/.env.example frontend/.env.local
+cp backend/.env.example backend/.env.local
+```
+
+Enter approved **staging** configuration from the platform owner's environment
+manager. No approved staging URL/config was supplied for this verification.
+
+| File | Required variable names |
+| --- | --- |
+| `frontend/.env.local` | `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, server-only `BACKEND_URL` |
+| `backend/.env.local` for local real backend | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `AI_PROVIDER=maxplus`, `AI_MODEL`, `MAXPLUSAI_API_KEY`, `MAXPLUSAI_BASE_URL`, `MAXPLUSAI_POOL`, `PORT=4000`, `HOST` |
+
+Browser gets only public Supabase config and its own user token. Do not supply
+service-role/JWT signing keys, DB credentials, provider keys or production accounts
+to frontend developers. Provider secrets stay with the backend owner/runtime.
+Unused admin/billing/other-provider examples are not required or implemented features.
+
+```sh
+# Terminal 1: approved backend env; reviewed migrations applied to staging first
+npm run dev:backend
+# Terminal 2: frontend BACKEND_URL=http://127.0.0.1:4000
+PORT=3101 npm run dev:frontend
+```
+
+Backend: `http://127.0.0.1:4000`; frontend default: `http://localhost:3000`.
+Explicit **3101** passed the dev-start drill because this test machine returned
+unrelated Vite HTML at port 3000. Exact local routing cause is unverified; unrelated
+services were not killed. Align APP_URL and approved OAuth allowlists with your port.
+With an approved HTTPS staging BACKEND_URL, start only the frontend. Keep API calls
+same-origin `/api/*`; no backend origin hardcoding in browser code. Rebuild after
+changing proxy/public build variables.
+
+```sh
+curl -fsS http://127.0.0.1:4000/api/health
+curl -fsS http://127.0.0.1:3101/api/health
+# Both must return JSON: {"status":"ok","service":"tuydui-backend"}
+```
+
+Health verifies connectivity, not Supabase/provider configuration.
+
+## C. Credentials-free local regression mode
+
+Real Node backend/PDF parser with **mock Supabase and AI**, never live acceptance.
+This runs automated authenticated workspace flows but cannot exercise real Google
+sign-in or provide a live authenticated manual workspace session. In a test-only shell:
+
+```sh
+export NEXT_TELEMETRY_DISABLED=1
+export BACKEND_URL=http://127.0.0.1:4100
+export NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:4401
+export NEXT_PUBLIC_SUPABASE_ANON_KEY=local-test-public-key
 npm run check
 npm test
 npm run build
 npx playwright install chromium
 npm run test:e2e
-npm run security:secrets
-npm audit --omit=dev --audit-level=high
 ```
 
-Browser fixture tests require a frontend production build with:
-`BACKEND_URL=http://127.0.0.1:4100`, `NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:4401`,
-`NEXT_PUBLIC_SUPABASE_ANON_KEY=local-test-public-key`.
-These are local **test fixtures**, not live Supabase/AI verification. The CI workflow
-sets them automatically; do not deploy that build. Preview builds use staging vars.
+Tests start/stop fixture `4401`, backend `4100`, production frontend `3100`, and
+seed synthetic sessions. Keep ports free. For inspection run
+`npx playwright test --headed --debug` in the same shell and step through the
+workflow in Inspector. Do not start duplicate fixture servers. Never deploy this
+test build: unset dummy overrides and rebuild using approved staging configuration.
 
-## Edit boundaries
+## D. Preserve integration boundaries
 
-Allowed on `frontend/*` branches: presentation in `frontend/app/**`, assets under
-`frontend/public/**`, regression tests under `frontend/tests/**`.
-Protected: `frontend/app/auth/**`, `frontend/app/components/AuthProvider.tsx`,
-`LocaleProvider.tsx`, `frontend/src/lib/**`, `frontend/src/domain/**`, Next config,
-package manifests/lockfile, backend, migrations, scripts, workflows, secret files.
-Ask for an integration PR with CODEOWNER review if protected logic must change.
-Do not alter stable node/requirement/project IDs, auth header, task names, FormData
-fields, database/RPC names or storage keys during a layout change.
+UX/UI paths: `frontend/app/**`, `frontend/public/**`, `frontend/tests/**`, except
+protected auth/providers. Preserve `frontend/src/lib/**`, `frontend/src/domain/**`,
+`frontend/app/auth/**`, `AuthProvider.tsx`, `LocaleProvider.tsx`.
+Key libraries: `api.ts`, `auth.ts`, `supabase.ts`, `project-queries.ts`,
+`workspace-state.ts`, `workspace-repository.ts`, `use-workspace-sync.ts`.
+Backend/migrations/scripts/workflows/manifests/lockfile/Next config require a
+separate integration PR and owner review; they are not frontend-only scope.
 
-Workspace persistence is encapsulated in `use-workspace-sync.ts` and
-`workspace-repository.ts`; state contract in `workspace-state.ts`. Keep their
-calls/state wiring when editing workspace presentation. Some view interactions
-and AI proposal mapping remain in the page; moving them requires passing the same
-contract/browser tests. No UX redesign is included in this preparation work.
+[API_CONTRACT.md](API_CONTRACT.md) defines endpoints, tasks, FormData, Supabase
+tables/RPCs and errors. Keep workspace hook/state wiring when changing presentation.
+Preserve project/requirement/node IDs, relationships and storage keys. Server snapshots
+are shared truth; localStorage is legacy/recovery storage. Never clear it, silently
+merge conflicts, fake save success or rewrite baseline/history to simplify a layout.
 
-## PR workflow and definition of done
+## E. Testing and delivery
+
+Verified scripts: `npm run check`, `npm test`, `npm run build`, `npm run test:e2e`,
+`npm run security:secrets`, `npm audit --omit=dev --audit-level=high`.
+Use the fixture build variables above for browser tests. Existing browser coverage:
+1440/768/390 routes/overflow/console, guards/callback/logout, proxy, PDF/map,
+notes reload, baseline/changes and quota. Test changed controls and screenshots too.
+
+Real frontend/backend acceptance requires approved HTTPS staging origins, migrations,
+dedicated accounts and provider config. Owner runs `npm run test:staging` with
+`STAGING_FRONTEND_URL`, `STAGING_BACKEND_URL`, `STAGING_OWNER_TOKEN`,
+`STAGING_OUTSIDER_TOKEN`, `STAGING_PROJECT_ID` from the secret manager.
+See [DEPLOYMENT_RUNBOOK.md](DEPLOYMENT_RUNBOOK.md) for opt-in mutation-suite env names,
+three-account setup, Google/manual acceptance and rollback. Missing config fails
+explicitly; no staging URL is currently verified.
 
 ```sh
 git add frontend/app frontend/public frontend/tests
+git diff --cached
 git commit -m "Update frontend presentation"
 git push -u origin frontend/redesign-v3
 ```
 
-Open a PR **against the adopted split integration branch**, label `frontend-only`.
-Include changed routes, desktop/tablet/mobile screenshots, test outputs and preview URL.
-CI checks changed-file boundaries, secret patterns, audit, types, tests, both builds,
-proxy, guards, workspace save/reload and responsive routes. Backend contract tests
-and real SQL migration tests run on frontend PRs too. Do not remove failing checks.
+Open PR against the adopted integration branch. Prefix `frontend/` activates the
+scope gate; add `frontend-only` label when available. Include changed routes,
+QA outputs, three-width screenshots and approved staging preview URL.
+Hosted checks enforce scope, clean install, secrets/audit, types, both-workspace
+tests/contracts/builds and browser regressions. QA-only PR #2 proved this exact
+return path and was closed unmerged; do not copy its comment-only commit.
 
-Acceptance requires protected branch rules + CODEOWNER review, passing CI, a preview
-connected to a real staging backend, the live staging smoke, and manually evidenced
-test-account OAuth/PDF/AI/sharing/quota/concurrency checks in the deployment runbook.
-The owner deploys/cuts over only after these gates and explicit release approval.
-API changes require updating [API_CONTRACT.md](API_CONTRACT.md), paired tests and
-backward-compatible rollout. A green local mock suite alone does not approve handoff/release.
+Repository owner adopts/protects the branch and enables required checks/CODEOWNER
+review. Integration maintainer reviews/merges after CI and real staging acceptance.
+Deployment owner releases only after security remediation and explicit approval;
+frontend developers do not deploy production or apply SQL migrations.
+API changes need paired contract/tests and a compatible rollout.
+
+Rollback owner restores recorded Vercel deployment/root/env and compatible backend
+image per runbook; retain additive DB/PDF/workspace data. Never drop data/reset
+history for a frontend rollback. Responsibilities: [OWNER_ACTIONS.md](OWNER_ACTIONS.md).

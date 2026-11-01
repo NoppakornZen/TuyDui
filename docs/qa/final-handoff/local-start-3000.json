@@ -1,0 +1,19 @@
+{
+  "checkedAt": "2026-11-01T13:51:13.296Z",
+  "status": "FAIL",
+  "error": "Local frontend URL returned HTML or non-backend JSON; possible port routing conflict",
+  "results": [
+    {
+      "url": "http://127.0.0.1:4000/api/health",
+      "status": 200,
+      "contentType": "application/json",
+      "backendJson": true
+    },
+    {
+      "url": "http://127.0.0.1:3000/api/health",
+      "status": 200,
+      "contentType": "text/html",
+      "backendJson": false
+    }
+  ]
+}

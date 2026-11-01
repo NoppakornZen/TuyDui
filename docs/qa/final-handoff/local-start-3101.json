@@ -1,0 +1,29 @@
+{
+  "checkedAt": "2026-11-01T13:51:19.050Z",
+  "status": "PASS",
+  "commands": [
+    "npm run dev:backend",
+    "npm run dev:frontend"
+  ],
+  "limits": "Local process/proxy connectivity only. Fake public configuration; no authenticated/live Supabase or AI test.",
+  "results": [
+    {
+      "url": "http://127.0.0.1:4000/api/health",
+      "status": 200,
+      "contentType": "application/json",
+      "backendJson": true
+    },
+    {
+      "url": "http://127.0.0.1:3101/api/health",
+      "status": 200,
+      "contentType": "application/json",
+      "backendJson": true
+    },
+    {
+      "url": "http://127.0.0.1:3101/tutorial",
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "backendJson": null
+    }
+  ]
+}
