@@ -226,7 +226,7 @@ export class MaxPlusAIProvider implements AIProvider {
   }
 
   async listModels(): Promise<string[]> {
-    const response = await fetch(this.config.modelsUrl, { headers: this.headers() });
+    const response = await fetch(this.config.modelsUrl, { headers: this.headers(), signal: AbortSignal.timeout(15_000) });
     const payload = await response.json().catch(() => null) as { data?: Array<{ id?: string }>; error?: { message?: string } } | null;
     if (!response.ok || !payload) throw new AIRequestError(response.status, this.redact(payload?.error?.message));
     return (payload.data ?? []).map((item) => item.id).filter((id): id is string => Boolean(id));
@@ -247,11 +247,12 @@ export class MaxPlusAIProvider implements AIProvider {
     let requestId: string | null = null;
     let providerCost: number | null = null;
     let prompt = user;
+    const signal = AbortSignal.timeout(240_000);
 
     for (let attempt = 1; attempt <= 2; attempt += 1) {
       let message: ProviderMessage;
       try {
-        message = await this.requestMessage(system, prompt, maxTokens);
+        message = await this.requestMessage(system, prompt, maxTokens, signal);
       } catch (error) {
         const code = error instanceof AIRequestError ? error.code : 'provider_error';
         await this.log(task, projectId, userId, false, code, totalIn, totalOut, null, null);
@@ -285,7 +286,7 @@ export class MaxPlusAIProvider implements AIProvider {
     throw new Error(lastError);
   }
 
-  private async requestMessage(system: string, user: string, maxTokens: number): Promise<ProviderMessage> {
+  private async requestMessage(system: string, user: string, maxTokens: number, signal: AbortSignal): Promise<ProviderMessage> {
     const response = await fetch(this.config.messagesUrl, {
       method: 'POST',
       headers: this.headers(),
@@ -295,7 +296,7 @@ export class MaxPlusAIProvider implements AIProvider {
         system,
         messages: [{ role: 'user', content: user }],
       }),
-      signal: AbortSignal.timeout(240_000),
+      signal,
     });
     const payload = await response.json().catch(() => null) as ProviderMessage | null;
     if (!response.ok || !payload) throw new AIRequestError(response.status, this.redact(payload?.error?.message));

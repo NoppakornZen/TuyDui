@@ -7,6 +7,10 @@ import ProjectPeople from '../../components/ProjectPeople';
 import LanguageToggle from '../../components/LanguageToggle';
 import { googleName, loadOwnProfile, profileLabel } from '../../../src/lib/profile';
 import { apiFetch } from '../../../src/lib/api';
+import { useWorkspaceSync } from '../../../src/lib/use-workspace-sync';
+import { useProjectMembers } from '../../../src/lib/use-project-members';
+import { useProcessingTime } from '../../../src/lib/use-processing-time';
+import type { WorkspaceState } from '../../../src/lib/workspace-state';
 import './workspace-redesign.css';
 import './workspace-dashboard.css';
 
@@ -18,13 +22,6 @@ type RequirementRow = { id: string; title: string; description: string; area: st
 type ChangeRow = { id: string; title: string; type: string; detail: string; decision: string; explanation?: string; confidence?: string };
 type StoredDocument = { id: string; name: string; version: number; pageCount: number; uploadedAt: string };
 type SuggestedNode = { tempId: string; parentTempId?: string; title: string; summary?: string; category: string; requirementIds: string[]; suggestedRole?: string; suggestedMemberId?: string };
-
-const team = [
-  { id: 'zen', name: 'Zen', role: 'Backend' },
-  { id: 'pee', name: 'Pee', role: 'Frontend' },
-  { id: 'arm', name: 'Arm', role: 'Design' },
-  { id: 'nan', name: 'Nan', role: 'Growth' },
-];
 
 const initialNodes: MapNode[] = [
   { id: 'root', title: 'Project', kind: 'project', owner: 'Project team', requirements: 0, x: 640, y: 280, requirementIds: [] },
@@ -39,6 +36,10 @@ export default function WorkspacePage() {
   const projectId = params.projectId as string;
 
   const [loading, setLoading] = useState(true);
+  const [loadedProjectId, setLoadedProjectId] = useState('');
+  const loadGeneration = useRef(0);
+  const { members: projectMembers } = useProjectMembers(projectId);
+  const team = projectMembers.filter((member) => member.accepted_at).map((member) => ({ id: member.user_id, name: member.name || 'Project member', role: member.role }));
   const [projectTitle, setProjectTitle] = useState('');
   const [clientName, setClientName] = useState('');
   const [nodes, setNodes] = useState(initialNodes);
@@ -65,6 +66,7 @@ export default function WorkspacePage() {
   const [documents, setDocuments] = useState<StoredDocument[]>([]);
   const [mapProposal, setMapProposal] = useState<SuggestedNode[] | null>(null);
   const [aiBusy, setAiBusy] = useState<'change' | 'brief' | 'pdf' | 'map' | null>(null);
+  const processingSeconds = useProcessingTime(aiBusy !== null);
   const [aiError, setAiError] = useState('');
   const [briefProposals, setBriefProposals] = useState<RequirementRow[]>([]);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -78,17 +80,23 @@ export default function WorkspacePage() {
   const coverage = requirements.length === 0 ? 0 : Math.round((assigned / requirements.length) * 100);
   const latestDocument = documents[documents.length - 1];
   const linkedRequirements = requirements.filter((row) => selected.requirementIds.includes(row.id));
+  const snapshot = useMemo<WorkspaceState>(() => ({ nodes, edges, zoom, pan, requirements, changes, history, nodeNotes, documents, baselineConfirmed }), [nodes, edges, zoom, pan, requirements, changes, history, nodeNotes, documents, baselineConfirmed]);
+  const { loadWorkspace, saveNow, syncStatus, recovery } = useWorkspaceSync(projectId, snapshot, !loading && loadedProjectId === projectId);
 
   useEffect(() => {
-    loadProject();
+    const generation = ++loadGeneration.current;
+    void loadProject(generation);
+    return () => { ++loadGeneration.current; };
   }, [projectId]);
 
-  async function loadProject() {
+  async function loadProject(generation = ++loadGeneration.current) {
     try {
       setLoading(true);
+      setLoadedProjectId('');
       const { supabase } = await import('../../../src/lib/supabase');
 
       const { data: { user } } = await supabase.auth.getUser();
+      if (generation !== loadGeneration.current) return;
       if (!user) {
         router.push('/login');
         return;
@@ -104,45 +112,32 @@ export default function WorkspacePage() {
         router.push('/projects');
         return;
       }
-
+      const owner = await ownerIdentity(project.owner_id, user.id);
+      const data = await loadWorkspace(user.id);
+      if (generation !== loadGeneration.current) return;
       setProjectTitle(project.name);
       setClientName(project.client_name);
-      setBaselineConfirmed(!!project.baseline_confirmed_at);
-      const owner = await ownerIdentity(project.owner_id, user.id);
+      setBaselineConfirmed(!!project.baseline_confirmed_at || data?.baselineConfirmed === true);
       setOwnerName(owner.name);
       setOwnerAvatar(owner.avatar);
-
-      const storageKey = `briefdiff-project-${projectId}`;
-      const saved = window.localStorage.getItem(storageKey);
-      if (saved) {
-        try {
-          const data = JSON.parse(saved) as { nodes?: MapNode[]; edges?: Edge[]; zoom?: number; pan?: { x: number; y: number }; requirements?: Array<RequirementRow & { description?: string }>; changes?: ChangeRow[]; history?: string[]; nodeNotes?: Record<string, string>; documents?: StoredDocument[] };
-          if (data.nodes?.length) setNodes(data.nodes.map((node) => ({ ...node, requirementIds: node.requirementIds ?? [], owner: node.kind === 'project' ? owner.name : node.owner })));
-          if (data.edges) setEdges(data.edges);
-          if (data.zoom) setZoom(data.zoom);
-          if (data.pan) setPan(data.pan);
-          if (data.requirements) setRequirements(data.requirements.map((row) => ({ ...row, description: row.description || row.title })));
-          if (data.changes) setChanges(data.changes);
-          if (data.history) setHistory(data.history);
-          if (data.nodeNotes) setNodeNotes(data.nodeNotes);
-          if (data.documents) setDocuments(data.documents);
-        } catch { window.localStorage.removeItem(storageKey); }
-      } else {
-        setNodes([{ id: 'root', title: project.name, kind: 'project', owner: owner.name, requirements: 0, x: 640, y: 280, requirementIds: [] }]);
-      }
+      setNodes(data?.nodes.map((node) => ({ ...node, owner: node.kind === 'project' ? owner.name : node.owner })) ?? [{ id: 'root', title: project.name, kind: 'project', owner: owner.name, requirements: 0, x: 640, y: 280, requirementIds: [] }]);
+      setEdges(data?.edges ?? []);
+      setZoom(data?.zoom ?? 1);
+      setPan(data?.pan ?? { x: 0, y: 0 });
+      setRequirements(data?.requirements.map((row) => ({ ...row, description: row.description || row.title })) ?? []);
+      setChanges(data?.changes ?? []);
+      setHistory(data?.history ?? []);
+      setNodeNotes(data?.nodeNotes ?? {});
+      setDocuments(data?.documents ?? []);
+      setSelectedId('root');
+      setLoadedProjectId(projectId);
     } catch (err) {
       console.error('Failed to load project:', err);
-      router.push('/projects');
+      if (generation === loadGeneration.current) setAiError(err instanceof Error ? err.message : 'Project could not be loaded.');
     } finally {
-      setLoading(false);
+      if (generation === loadGeneration.current) setLoading(false);
     }
   }
-
-  useEffect(() => {
-    if (!projectId || loading) return;
-    const storageKey = `briefdiff-project-${projectId}`;
-    window.localStorage.setItem(storageKey, JSON.stringify({ nodes, edges, zoom, pan, requirements, changes, history, nodeNotes, documents }));
-  }, [nodes, edges, zoom, pan, requirements, changes, history, nodeNotes, documents, projectId, loading]);
 
   useEffect(() => {
     const viewport = canvasRef.current;
@@ -359,7 +354,7 @@ export default function WorkspacePage() {
 
   function acceptBriefProposals() {
     if (briefProposals.length === 0) return;
-    setRequirements((current) => [...current, ...briefProposals.filter((item) => !current.some((existing) => existing.id === item.id))]);
+    setRequirements((current) => [...current.map((row) => briefProposals.find((proposal) => proposal.id === row.id) ?? row), ...briefProposals.filter((item) => !current.some((existing) => existing.id === item.id))]);
     setHistory((current) => [`${briefProposals.length} proposed requirements added for review · Just now`, ...current]);
     setBriefProposals([]);
     setBriefText('');
@@ -401,10 +396,14 @@ export default function WorkspacePage() {
     setHistory((current) => [`${changes.find((change) => change.id === id)?.title ?? 'Change'} marked ${decision} · Just now`, ...current]);
   }
 
-  function confirmBaseline() {
+  async function confirmBaseline() {
     if (baselineConfirmed) { window.alert('Baseline V1 is already confirmed and cannot be edited.'); return; }
-    setBaselineConfirmed(true);
-    setHistory((current) => ['Baseline V1 confirmed · Just now', ...current]);
+    try {
+      const nextHistory = ['Baseline V1 confirmed · Just now', ...history];
+      await saveNow({ ...snapshot, baselineConfirmed: true, history: nextHistory });
+      setBaselineConfirmed(true);
+      setHistory(nextHistory);
+    } catch (error) { setAiError(error instanceof Error ? error.message : 'Baseline could not be saved.'); }
   }
 
   if (loading) {
@@ -418,13 +417,17 @@ export default function WorkspacePage() {
     );
   }
 
+  if (loadedProjectId !== projectId) return <main className="workspace-app"><p role="alert">{aiError || 'Project could not be loaded.'}</p><button onClick={() => void loadProject()}>Retry</button><button onClick={() => exportRecovery(window.localStorage.getItem(`briefdiff-project-${projectId}`) || '{}', projectId)}>Export local recovery data</button></main>;
+
   return (
     <main className="workspace-app">
+      <div role="status" aria-live="polite" className="workspace-sync-status">{syncStatus} {recovery && <button type="button" onClick={() => exportRecovery(recovery, projectId)}>Export retained local data</button>}</div>
       <header className="workspace-topbar"><a className="workspace-brand brand-wordmark" href="/projects">Tuy<span className="wordmark-accent">Dui</span></a><div className="workspace-crumb">Projects <b>/</b> <strong>{projectTitle}</strong></div><ProjectPeople projectId={projectId} /><LanguageToggle compact /><button className="button-light" style={{ marginRight: '16px', display: 'flex', alignItems: 'center', gap: '8px' }} onClick={() => setShowShareModal(true)}><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 11v2a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h2M10 1h6v6M7 11l9-9"/></svg>Share</button><div className="workspace-account"><span>{clientName}</span><b>{clientName[0] || 'C'}</b></div></header>
       <div className="workspace-layout">
         <aside className="workspace-sidebar"><div className="sidebar-eyebrow">PROJECT WORKSPACE</div><h1>{projectTitle}</h1><p>{latestDocument ? `V${latestDocument.version} · ${latestDocument.name}` : 'No brief yet'}</p><nav>{([['overview','▦','Overview',''],['map','⌘','Project map',''],['requirements','≡','Requirements',String(requirements.length)],['changes','↗','Changes',String(pendingChanges.length)],['history','◷','History','']] as const).map(([tab, icon, label, count]) => <button key={tab} className={activeTab === tab ? 'side-active' : ''} onClick={() => setActiveTab(tab)}>{icon} <span>{label}</span>{count && <em className={tab === 'changes' ? 'danger' : ''}>{count}</em>}</button>)}</nav><div className="sidebar-baseline"><span className="check">{baselineConfirmed ? '✓' : '–'}</span><div><strong>{baselineConfirmed ? 'Baseline V1' : 'Baseline'}</strong><small>{baselineConfirmed ? 'Confirmed' : 'Not confirmed'}</small></div></div></aside>
         <section className="workspace-main"><div className="workspace-header"><div><div className="workspace-kicker"><span /> ACTIVE PROJECT</div><h2>{activeTab === 'map' ? 'Project map' : activeTab === 'overview' ? projectTitle : activeTab === 'requirements' ? 'Requirements' : activeTab === 'changes' ? 'Change review' : 'Project history'}</h2><p>{activeTab === 'map' ? `${requirements.length} requirements · ${workAreas.length} work areas · ${pendingChanges.length} open changes` : latestDocument ? `${latestDocument.pageCount} pages in the latest brief` : 'Send a PDF brief to start'}</p></div>{activeTab === 'map' && <div className="workspace-actions"><button className="button-light" onClick={() => updateZoom(zoom - .1)}>−</button><span className="zoom-readout">{Math.round(zoom * 100)}%</span><button className="button-light" onClick={() => updateZoom(zoom + .1)}>＋</button><button className={`button-light connect ${connectMode ? 'active' : ''}`} onClick={() => { setConnectMode((value) => !value); setConnectSource(null); }}>{connectMode ? 'Select nodes' : '↗ Connect'}</button><button className="button-light" type="button" onClick={buildMap} disabled={aiBusy !== null || requirements.length === 0}>{aiBusy === 'map' ? 'Building map…' : 'Build map'}</button><button className="button-primary" onClick={addNode}>＋ Add node</button></div>}</div>
           {activeTab === 'overview' && <div className="workspace-overview"><div className="overview-metrics"><div><small>Current scope</small><strong>{requirements.length} <i>requirements</i></strong><span>From the current brief</span></div><div><small>Open changes</small><strong className="rose-text">{pendingChanges.length} <i>need review</i></strong><span className="rose-text">AI proposes. You decide.</span></div><div><small>Team coverage</small><strong>{coverage}% <i>assigned</i></strong><span>{assigned} of {requirements.length} have an owner</span></div><div><small>Baseline</small><strong>{baselineConfirmed ? '✓' : '–'} <i>{baselineConfirmed ? 'V1 confirmed' : 'Not confirmed'}</i></strong><span>{baselineConfirmed ? 'Locked' : 'AI output is not scope yet'}</span></div></div><div className="overview-columns"><div className="overview-card"><header><div><h3>Living project map</h3><p>Your project, connected to the source brief.</p></div><button onClick={() => setActiveTab('map')}>Open map →</button></header><div className="overview-map-preview"><span>PROJECT</span><strong>{projectTitle}</strong><div>{workAreas.length === 0 ? <b>No map yet</b> : workAreas.slice(0, 6).map((node) => <b key={node.id}>{node.title}</b>)}</div></div></div><div className="overview-card"><header><div><h3>Needs your decision</h3><p>AI analysis is ready for review.</p></div><button onClick={() => setActiveTab('changes')}>See all →</button></header>{pendingChanges.length === 0 ? <p className="ai-note">No open changes. Check a client message to see an AI proposal.</p> : pendingChanges.slice(0, 3).map((change) => <button className="overview-change" key={change.id} onClick={() => setActiveTab('changes')}><em>{change.type.split(' ')[0]}</em><span><strong>{change.title}</strong><small>{change.decision}</small></span><b>›</b></button>)}</div></div></div>}
+          {aiBusy && <p className="ai-note" aria-live="polite">Processing · {processingSeconds}s elapsed. Please keep this tab open.</p>}
           {activeTab === 'requirements' && <div className="workspace-table"><header><div><h3>Requirements</h3><p>{requirements.length} requirements. A PDF stays a proposal until you add it. It does not confirm the baseline.</p></div><button className="button-primary" onClick={addRequirement}>＋ Add requirement</button></header>
             <form className="ai-composer" onSubmit={readPdf}>
               <label htmlFor="brief-pdf">Send a PDF brief</label>
@@ -464,7 +467,7 @@ export default function WorkspacePage() {
           </div>
           </>}
         </section>
-        <aside className="workspace-inspector"><div className="inspector-kicker">{selected.kind === 'project' ? 'PROJECT' : 'WORK AREA'}</div><h2>{selected.title}</h2><span className="inspector-status">{selected.impacted ? 'Impacted by open change' : selected.kind === 'project' && baselineConfirmed ? 'Baseline V1 confirmed' : 'Not confirmed'}</span>{selected.summary && <div className="inspector-section"><h3>What this covers</h3><p className="inspector-summary">{selected.summary}</p></div>}<div className="inspector-section"><h3>Owner</h3><div className="inspector-owner">{selected.kind === 'project' && ownerAvatar ? <img className="node-avatar" src={ownerAvatar} alt="" /> : <b className="node-avatar green">{(selected.kind === 'project' ? ownerName : selected.owner)[0] || '?'}</b>}<span>{selected.kind === 'project' ? (ownerName || selected.owner) : selected.owner}</span></div></div><div className="inspector-section"><h3>Connected requirements</h3>{linkedRequirements.length === 0 ? <div className="inspector-requirement"><strong>No requirements yet</strong><small>Read a PDF, add the proposals, then build the map.</small><button className="inline-link" onClick={() => setActiveTab('requirements')}>Open requirements →</button></div> : linkedRequirements.map((row) => <div className="inspector-requirement" key={row.id}><strong>{row.title}</strong><small>{row.source}{row.quote ? ` · "${row.quote.slice(0, 120)}"` : ''}</small></div>)}</div><div className="inspector-section"><h3>Notes</h3><textarea value={nodeNotes[selected.id] ?? ''} onChange={(event) => setNodeNotes((current) => ({ ...current, [selected.id]: event.target.value }))} placeholder="Add a note for your team..." /></div><button className="button-primary inspector-save" onClick={() => { setHistory((current) => [`Notes saved for ${selected.title} · Just now`, ...current]); window.alert('Node details saved locally.'); }}>Save node details</button>{!baselineConfirmed && <button className="baseline-action" onClick={confirmBaseline}>Confirm baseline</button>}</aside>
+        <aside className="workspace-inspector"><div className="inspector-kicker">{selected.kind === 'project' ? 'PROJECT' : 'WORK AREA'}</div><h2>{selected.title}</h2><span className="inspector-status">{selected.impacted ? 'Impacted by open change' : selected.kind === 'project' && baselineConfirmed ? 'Baseline V1 confirmed' : 'Not confirmed'}</span>{selected.summary && <div className="inspector-section"><h3>What this covers</h3><p className="inspector-summary">{selected.summary}</p></div>}<div className="inspector-section"><h3>Owner</h3><div className="inspector-owner">{selected.kind === 'project' && ownerAvatar ? <img className="node-avatar" src={ownerAvatar} alt="" /> : <b className="node-avatar green">{(selected.kind === 'project' ? ownerName : selected.owner)[0] || '?'}</b>}<span>{selected.kind === 'project' ? (ownerName || selected.owner) : selected.owner}</span></div></div><div className="inspector-section"><h3>Connected requirements</h3>{linkedRequirements.length === 0 ? <div className="inspector-requirement"><strong>No requirements yet</strong><small>Read a PDF, add the proposals, then build the map.</small><button className="inline-link" onClick={() => setActiveTab('requirements')}>Open requirements →</button></div> : linkedRequirements.map((row) => <div className="inspector-requirement" key={row.id}><strong>{row.title}</strong><small>{row.source}{row.quote ? ` · "${row.quote.slice(0, 120)}"` : ''}</small></div>)}</div><div className="inspector-section"><h3>Notes</h3><textarea value={nodeNotes[selected.id] ?? ''} onChange={(event) => setNodeNotes((current) => ({ ...current, [selected.id]: event.target.value }))} placeholder="Add a note for your team..." /></div><button className="button-primary inspector-save" onClick={() => { void saveNow().catch((error) => setAiError(error.message)); }}>Save node details</button>{!baselineConfirmed && <button className="baseline-action" onClick={confirmBaseline}>Confirm baseline</button>}</aside>
       </div>
       {showShareModal && (
         <ShareModal
@@ -526,6 +529,13 @@ async function runAI<T>(body: Record<string, unknown>): Promise<T> {
   const payload = await response.json().catch(() => ({})) as { data?: T; error?: string };
   if (!response.ok || payload.data == null) throw new Error(payload.error || 'AI request failed.');
   return payload.data;
+}
+
+function exportRecovery(raw: string, projectId: string) {
+  const url = URL.createObjectURL(new Blob([raw], { type: 'application/json' }));
+  const link = document.createElement('a');
+  link.href = url; link.download = `tuydui-recovery-${projectId}.json`; link.click();
+  URL.revokeObjectURL(url);
 }
 
 function toRequirement(row: RequirementRow) {

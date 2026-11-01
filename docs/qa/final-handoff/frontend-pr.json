@@ -1,0 +1,10 @@
+{
+  "checkedAt": "2026-11-01T13:57:34.940Z",
+  "number": 2,
+  "url": "https://github.com/NoppakornZen/TuyDui/pull/2",
+  "draft": true,
+  "state": "open",
+  "base": "integration/frontend-handoff-2026-11-01",
+  "head": "frontend/handoff-verification-2026-11-01",
+  "sha": "88646dcb73f4ef6a73cd1d71c62341869f715bf7"
+}

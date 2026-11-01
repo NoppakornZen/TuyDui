@@ -1,7 +1,8 @@
 import type { Requirement, ScopeChange, SourceDocument } from '../domain/models.js';
-import { AIRequestError, MaxPlusAIProvider, aiStatus, createAIProvider } from '../services/ai/maxplus.js';
+import { AIRequestError, aiStatus, createAIProvider } from '../services/ai/maxplus.js';
 import { readAIUsage, summarizeAIUsage } from '../services/ai/usage.js';
-import { requireAuth, checkRateLimit, recordUsage } from '../lib/rate-limit.js';
+import { requireAuth, reserveUsage } from '../lib/rate-limit.js';
+import { hasCrossProjectData, requireProjectAccess } from '../lib/project-access.js';
 
 
 const TASKS = new Set([
@@ -13,24 +14,15 @@ const TASKS = new Set([
   'suggest_project_structure',
 ]);
 
-const recentCalls: number[] = [];
-
 export async function GET(request: Request) {
+  const auth = await requireAuth(request);
+  if (auth instanceof Response) return auth;
   const url = new URL(request.url);
   const status = aiStatus();
-  const usage = url.searchParams.get('usage') === '1' ? summarizeAIUsage(await readAIUsage()) : undefined;
+  const usage = url.searchParams.get('usage') === '1' ? summarizeAIUsage((await readAIUsage()).filter((event) => event.userId === auth.userId)) : undefined;
   if (url.searchParams.get('live') !== '1') return Response.json({ ...status, usage });
 
-  const provider = createAIProvider();
-  if (!(provider instanceof MaxPlusAIProvider)) {
-    return Response.json({ ...status, live: false, usage });
-  }
-  try {
-    const models = await provider.listModels();
-    return Response.json({ ...status, live: true, modelAvailable: models.includes(status.model), usage });
-  } catch (error) {
-    return Response.json({ ...status, live: false, error: error instanceof Error ? error.message : 'Model check failed.', usage }, { status: httpStatus(error) });
-  }
+  return Response.json({ error: 'Live provider diagnostics are operator-only. Use the provider dashboard.' }, { status: 403 });
 }
 
 export async function POST(request: Request) {
@@ -39,24 +31,21 @@ export async function POST(request: Request) {
   if (auth instanceof Response) return auth;
   const { userId } = auth;
 
-  // Check rate limit
-  const rateLimit = await checkRateLimit(userId, 'FREE');
-  if (!rateLimit.allowed) {
-    return Response.json({
-      error: `Rate limit exceeded. Try again in ${rateLimit.resetIn} seconds.`,
-      resetIn: rateLimit.resetIn
-    }, { status: 429 });
-  }
-
   const body = await request.json().catch(() => null) as Record<string, unknown> | null;
   const task = typeof body?.task === 'string' ? body.task : '';
   if (!body || !TASKS.has(task)) return Response.json({ error: 'Unknown AI task.' }, { status: 400 });
 
-  // Record usage
-  await recordUsage(userId, task);
+  const projectId = task === 'draft_change_explanation' && body.change && typeof body.change === 'object'
+    ? (body.change as Record<string, unknown>).projectId : body.projectId;
+  const access = await requireProjectAccess(request, projectId);
+  if (access instanceof Response) return access;
+  if (hasCrossProjectData(body, access.projectId)) return Response.json({ error: 'Cross-project data is not allowed.' }, { status: 400 });
+  body.userId = userId;
+  const limited = await reserveUsage(access, task);
+  if (limited) return limited;
 
-  const provider = createAIProvider();
   try {
+    const provider = createAIProvider();
     if (task === 'extract_requirements') {
       const projectId = requiredText(body.projectId, 'projectId');
       const text = requiredText(body.text, 'text');
@@ -105,15 +94,8 @@ export async function POST(request: Request) {
   }
 }
 
-function limited(): boolean {
-  const now = Date.now();
-  while (recentCalls.length > 0 && now - recentCalls[0] > 60_000) recentCalls.shift();
-  if (recentCalls.length >= 30) return true;
-  recentCalls.push(now);
-  return false;
-}
-
 function httpStatus(error: unknown): number {
+  if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) return 504;
   if (error instanceof AIRequestError) {
     if (error.code === 'authentication_error') return 401;
     if (error.code === 'insufficient_credit') return 402;

@@ -1,0 +1,13 @@
+
+> tuydui@0.1.0 check
+> npm run check --workspaces
+
+
+> @tuydui/frontend@0.1.0 check
+> next typegen && tsc --noEmit
+
+Generating route types...
+✓ Types generated successfully
+
+> @tuydui/backend@0.1.0 check
+> tsc --noEmit

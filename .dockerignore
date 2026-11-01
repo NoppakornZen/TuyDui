@@ -1,0 +1,14 @@
+.git
+.vercel
+.claude
+**/node_modules
+**/.next
+**/dist
+**/.env*
+!**/.env.example
+**/data
+qa-artifacts
+test-results
+playwright-report
+.design-qa
+legacy

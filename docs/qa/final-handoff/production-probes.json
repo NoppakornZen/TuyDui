@@ -1,0 +1,26 @@
+[
+  {
+    "checkedAt": "2026-11-01T13:36:59.994Z",
+    "url": "https://tuydui.vercel.app/",
+    "path": "/",
+    "status": 200,
+    "contentType": "text/html; charset=utf-8",
+    "backendJson": false
+  },
+  {
+    "checkedAt": "2026-11-01T13:36:59.630Z",
+    "url": "https://tuydui.vercel.app/tutorial",
+    "path": "/tutorial",
+    "status": 404,
+    "contentType": "text/html; charset=utf-8",
+    "backendJson": false
+  },
+  {
+    "checkedAt": "2026-11-01T13:36:59.637Z",
+    "url": "https://tuydui.vercel.app/api/health",
+    "path": "/api/health",
+    "status": 404,
+    "contentType": "text/html; charset=utf-8",
+    "backendJson": false
+  }
+]

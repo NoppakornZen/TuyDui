@@ -1,96 +1,42 @@
-import { supabaseAdmin } from './supabase-admin.js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { ProjectAccess } from './project-access.js';
 
-const AI_QUOTA = {
-  FREE: { requests_per_day: 10, requests_per_hour: 5 },
-  PRO: { requests_per_day: 100, requests_per_hour: 20 },
-};
-
-interface UsageRecord {
-  user_id: string;
-  timestamp: number;
-  task: string;
+type AuthContext = { userId: string; email: string; client: SupabaseClient };
+const authenticatedRequests = new WeakMap<Request, Promise<AuthContext | Response>>();
+export function requireAuth(request: Request): Promise<AuthContext | Response> {
+  let result = authenticatedRequests.get(request);
+  if (!result) { result = authenticate(request); authenticatedRequests.set(request, result); }
+  return result;
+}
+async function authenticate(request: Request): Promise<AuthContext | Response> {
+  const header = request.headers.get('authorization');
+  if (!header?.match(/^Bearer \S+$/)) return Response.json({ error: 'Unauthorized. Please login first.' }, { status: 401 });
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_ANON_KEY;
+  if (!url || !key) return Response.json({ error: 'Authentication is not configured.' }, { status: 503 });
+  try {
+    const client = createClient(url, key, {
+      global: {
+        headers: { Authorization: header },
+        fetch: (url, init) => fetch(url, { ...init, signal: init?.signal ?? AbortSignal.timeout(30_000) }),
+      },
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data: { user }, error } = await client.auth.getUser(header.slice(7));
+    if (error || !user) return Response.json({ error: 'Invalid or expired token.' }, { status: 401 });
+    return { userId: user.id, email: user.email ?? '', client };
+  } catch {
+    return Response.json({ error: 'Authentication service is unavailable.' }, { status: 503 });
+  }
 }
 
-// In-memory store for demo (will move to database later)
-const usageStore = new Map<string, UsageRecord[]>();
-
-export async function checkRateLimit(userId: string, plan: 'FREE' | 'PRO' = 'FREE'): Promise<{ allowed: boolean; remaining: number; resetIn?: number }> {
-  const now = Date.now();
-  const oneHour = 60 * 60 * 1000;
-  const oneDay = 24 * oneHour;
-
-  // Get user's usage
-  let usage = usageStore.get(userId) || [];
-
-  // Clean old records
-  usage = usage.filter(r => now - r.timestamp < oneDay);
-  usageStore.set(userId, usage);
-
-  const hourlyUsage = usage.filter(r => now - r.timestamp < oneHour);
-  const dailyUsage = usage;
-
-  const quota = AI_QUOTA[plan];
-
-  if (hourlyUsage.length >= quota.requests_per_hour) {
-    const oldestInHour = Math.min(...hourlyUsage.map(r => r.timestamp));
-    return {
-      allowed: false,
-      remaining: 0,
-      resetIn: Math.ceil((oldestInHour + oneHour - now) / 1000)
-    };
+/** Atomic database reservation prevents parallel requests/restarts bypassing quotas. */
+export async function reserveUsage(access: ProjectAccess, task: string): Promise<Response | null> {
+  const { data, error } = await access.client.rpc('reserve_ai_request', { project_uuid: access.projectId, task_name: task });
+  if (error) return Response.json({ error: 'Rate limit service is unavailable.' }, { status: 503 });
+  if (data?.allowed !== true) {
+    const resetIn = Number.isFinite(data?.resetIn) ? Math.max(1, Math.ceil(data.resetIn)) : 3600;
+    return Response.json({ error: 'Rate limit exceeded.', resetIn }, { status: 429, headers: { 'Retry-After': String(resetIn) } });
   }
-
-  if (dailyUsage.length >= quota.requests_per_day) {
-    const oldestInDay = Math.min(...dailyUsage.map(r => r.timestamp));
-    return {
-      allowed: false,
-      remaining: 0,
-      resetIn: Math.ceil((oldestInDay + oneDay - now) / 1000)
-    };
-  }
-
-  return {
-    allowed: true,
-    remaining: Math.min(
-      quota.requests_per_hour - hourlyUsage.length,
-      quota.requests_per_day - dailyUsage.length
-    )
-  };
-}
-
-export async function recordUsage(userId: string, task: string): Promise<void> {
-  const usage = usageStore.get(userId) || [];
-  usage.push({
-    user_id: userId,
-    timestamp: Date.now(),
-    task
-  });
-  usageStore.set(userId, usage);
-}
-
-export async function requireAuth(request: Request): Promise<{ userId: string; email: string } | Response> {
-  const authHeader = request.headers.get('authorization');
-
-  if (!authHeader?.startsWith('Bearer ')) {
-    return new Response(
-      JSON.stringify({ error: 'Unauthorized. Please login first.' }),
-      { status: 401, headers: { 'Content-Type': 'application/json' } }
-    );
-  }
-
-  const token = authHeader.substring(7);
-
-  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-
-  if (error || !user) {
-    return new Response(
-      JSON.stringify({ error: 'Invalid or expired token' }),
-      { status: 401, headers: { 'Content-Type': 'application/json' } }
-    );
-  }
-
-  return {
-    userId: user.id,
-    email: user.email || ''
-  };
+  return null;
 }

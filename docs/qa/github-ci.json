@@ -1,0 +1,31 @@
+{
+  "checkedAt": "2026-11-01T12:51:30.368Z",
+  "pr": {
+    "number": 1,
+    "url": "https://github.com/NoppakornZen/TuyDui/pull/1",
+    "draft": true,
+    "base": "feat/uxui-redesign",
+    "head": "integration/frontend-handoff-2026-11-01",
+    "sha": "84f60f1dc6cb8b9c1ab27dafdd01d3205755d8c5"
+  },
+  "runs": [
+    {
+      "id": 41308034555,
+      "url": "https://github.com/NoppakornZen/TuyDui/actions/runs/41308034555",
+      "event": "pull_request",
+      "name": "Integration checks",
+      "status": "completed",
+      "conclusion": "success",
+      "sha": "84f60f1dc6cb8b9c1ab27dafdd01d3205755d8c5"
+    },
+    {
+      "id": 41307925619,
+      "url": "https://github.com/NoppakornZen/TuyDui/actions/runs/41307925619",
+      "event": "push",
+      "name": "Integration checks",
+      "status": "completed",
+      "conclusion": "success",
+      "sha": "84f60f1dc6cb8b9c1ab27dafdd01d3205755d8c5"
+    }
+  ]
+}

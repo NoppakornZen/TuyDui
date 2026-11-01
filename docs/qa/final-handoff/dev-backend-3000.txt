@@ -1,0 +1,11 @@
+
+> tuydui@0.1.0 dev:backend
+> npm run dev --workspace backend
+
+
+> @tuydui/backend@0.1.0 dev
+> node --env-file-if-exists=.env.local --watch --import tsx src/server.ts
+
+.env.local not found. Continuing without it.
+.env.local not found. Continuing without it.
+Backend listening on http://localhost:4000

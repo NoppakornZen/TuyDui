@@ -1,0 +1,74 @@
+
+> tuydui@0.1.0 test
+> npm run test --workspace backend && npm run qa:project-flow && npm run test:frontend && npm run test:contracts
+
+
+> @tuydui/backend@0.1.0 test
+> npm run build && node --test tests/*.test.mjs
+
+
+> @tuydui/backend@0.1.0 build
+> tsc -p tsconfig.json
+
+✔ invalid and expired tokens are rejected at every AI write route (242.2315ms)
+✔ every project entry point rejects another project before provider/PDF/persistence calls (124.7859ms)
+✔ authorized request reaches explicit unconfigured-provider failure; invalid IDs and viewer processing fail (65.1959ms)
+✔ persistent quota returns Retry-After and AI diagnostics are protected (43.7409ms)
+✔ real SQL migrations enforce quota, RLS, persistence, baseline, invites, storage and rate limits (local PostgreSQL) (3808.633ms)
+✔ health endpoint works without provider credentials (112.4132ms)
+✔ unknown routes and unsupported methods return JSON errors (35.5439ms)
+✔ all AI write endpoints require a bearer token for JSON and multipart (80.3031ms)
+✔ rejects oversized declared and chunked bodies (30.0885ms)
+Warning: Indexing all PDF objects
+✔ real PDF parsing returns page references and rejects invalid bytes (229.2011ms)
+✔ provider contract validates extraction, retries malformed JSON and surfaces upstream failure (mock transport) (94.1395ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4133.9625
+
+> tuydui@0.1.0 qa:project-flow
+> npm run qa:project-flow --workspace frontend
+
+
+> @tuydui/frontend@0.1.0 qa:project-flow
+> tsx scripts/qa-project-flow.ts
+
+Shared project query unavailable; owned projects remain visible. { message: 'relation project_members does not exist' }
+project-flow QA passed: owned/shared visibility, read-after-write verification, quota used with visible project, exhausted quota with empty list, actionable schema error
+
+> tuydui@0.1.0 test:frontend
+> node --import tsx --test frontend/scripts/*.test.ts
+
+✔ API client preserves FormData and supplies the current bearer token, no-store and timeout (58.7811ms)
+✔ API client blocks missing sessions and off-origin token disclosure (2.2725ms)
+✔ Next proxy preserves /api paths and requires explicit HTTPS backend on Vercel (12.6044ms)
+✔ imports legacy data once, serializes saves, and reads persisted data after a new login (67.4979ms)
+✔ remote is authoritative, local data archived, conflict retained without overwrite (7.0159ms)
+✔ corrupt local data is never erased and backend failure never initializes an empty replacement (2.3563ms)
+✔ JSONB object key ordering does not cause redundant saves or recovery archives (4.1353ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 699.74
+
+> tuydui@0.1.0 test:contracts
+> node --import tsx --test tests/*.test.mjs
+
+✔ frontend and backend agree on valid workspace shapes and reject crash-prone records (5.9981ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 379.9816

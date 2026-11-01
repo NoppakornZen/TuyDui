@@ -1,0 +1,18 @@
+# Owner must enable required CODEOWNER review and protect the candidate canonical branch.
+/backend/ @NoppakornZen
+/scripts/ @NoppakornZen
+/tests/ @NoppakornZen
+/.github/ @NoppakornZen
+/package*.json @NoppakornZen
+/**/.env.example @NoppakornZen
+/frontend/package.json @NoppakornZen
+/frontend/next.config.mjs @NoppakornZen
+/frontend/tsconfig.json @NoppakornZen
+/playwright.config.ts @NoppakornZen
+/.dockerignore @NoppakornZen
+/frontend/src/lib/ @NoppakornZen
+/frontend/src/domain/ @NoppakornZen
+/frontend/app/auth/ @NoppakornZen
+/frontend/app/components/AuthProvider.tsx @NoppakornZen
+/frontend/app/components/LocaleProvider.tsx @NoppakornZen
+/docs/API_CONTRACT.md @NoppakornZen

@@ -1,0 +1,15 @@
+
+> tuydui@0.1.0 test:staging
+> node scripts/staging-smoke.mjs
+
+file:///C:/Users/Zen/Desktop/!BriefDiff/data/handoff-verify-20261101/scripts/staging-smoke.mjs:3
+for (const name of required) if (!process.env[name]) throw new Error(`BLOCKED: ${name} is required; this check never silently skips live tests.`);
+                                                           ^
+
+Error: BLOCKED: STAGING_FRONTEND_URL is required; this check never silently skips live tests.
+    at file:///C:/Users/Zen/Desktop/!BriefDiff/data/handoff-verify-20261101/scripts/staging-smoke.mjs:3:60
+    at ModuleJob.run (node:internal/modules/esm/module_job:439:25)
+    at async node:internal/modules/esm/loader:633:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+Node.js v24.16.0

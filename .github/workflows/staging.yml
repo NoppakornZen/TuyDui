@@ -1,0 +1,53 @@
+name: Staging acceptance
+on:
+  workflow_dispatch:
+    inputs:
+      frontend_url:
+        description: Approved staging frontend origin
+        required: true
+        type: string
+      backend_url:
+        description: Approved staging backend origin
+        required: true
+        type: string
+      run_full_flow:
+        description: Create test data using fresh dedicated staging accounts (owner approval required)
+        required: false
+        default: false
+        type: boolean
+permissions:
+  contents: read
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Read-only live health, auth, persistence, membership acceptance
+        env:
+          STAGING_FRONTEND_URL: ${{ inputs.frontend_url }}
+          STAGING_BACKEND_URL: ${{ inputs.backend_url }}
+          STAGING_OWNER_TOKEN: ${{ secrets.STAGING_OWNER_TOKEN }}
+          STAGING_OUTSIDER_TOKEN: ${{ secrets.STAGING_OUTSIDER_TOKEN }}
+          STAGING_PROJECT_ID: ${{ vars.STAGING_PROJECT_ID }}
+        run: npm run test:staging
+      - name: Required live workflow evidence
+        run: echo 'Read-only smoke does not approve release. Attach dedicated test-account OAuth, quota concurrency, PDF/AI, persistence, sharing and rollback evidence per docs/DEPLOYMENT_RUNBOOK.md.'
+      - name: Opt-in real staging workflow using disposable test accounts
+        if: inputs.run_full_flow
+        env:
+          STAGING_ALLOW_TEST_MUTATIONS: 'true'
+          STAGING_FRONTEND_URL: ${{ inputs.frontend_url }}
+          STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+          STAGING_SUPABASE_PROJECT_REF: ${{ vars.STAGING_SUPABASE_PROJECT_REF }}
+          STAGING_SUPABASE_ANON_KEY: ${{ secrets.STAGING_SUPABASE_ANON_KEY }}
+          STAGING_NEW_ACCOUNT_TOKEN: ${{ secrets.STAGING_NEW_ACCOUNT_TOKEN }}
+          STAGING_MEMBER_TOKEN: ${{ secrets.STAGING_MEMBER_TOKEN }}
+          STAGING_OUTSIDER_TOKEN: ${{ secrets.STAGING_OUTSIDER_TOKEN }}
+        run: npm run test:staging:flow

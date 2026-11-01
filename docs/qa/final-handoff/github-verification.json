@@ -1,0 +1,179 @@
+{
+  "checkedAt": "2026-11-01T14:37:44.028Z",
+  "defaultBranch": "main",
+  "main": {
+    "sha": "796852d95cfea7bfca452ca9952508538f122358",
+    "message": "ตรวจเช็ค QA\n\nตรวจเช็ค QA",
+    "files": [
+      {
+        "path": "backend/dist/lib/project-access.js",
+        "status": "added"
+      },
+      {
+        "path": "backend/dist/routes/workspace.js",
+        "status": "added"
+      },
+      {
+        "path": "backend/dist/services/documents.js",
+        "status": "added"
+      },
+      {
+        "path": "playwright-report/index.html",
+        "status": "added"
+      },
+      {
+        "path": "test-results/.last-run.json",
+        "status": "added"
+      },
+      {
+        "path": "test-results/projects-1440.png",
+        "status": "added"
+      },
+      {
+        "path": "test-results/projects-390.png",
+        "status": "added"
+      },
+      {
+        "path": "test-results/projects-768.png",
+        "status": "added"
+      },
+      {
+        "path": "test-results/public-1440.png",
+        "status": "added"
+      },
+      {
+        "path": "test-results/public-390.png",
+        "status": "added"
+      },
+      {
+        "path": "test-results/public-768.png",
+        "status": "added"
+      },
+      {
+        "path": "test-results/workspace-1440.png",
+        "status": "added"
+      },
+      {
+        "path": "test-results/workspace-390.png",
+        "status": "added"
+      },
+      {
+        "path": "test-results/workspace-768.png",
+        "status": "added"
+      }
+    ]
+  },
+  "handoffPR": {
+    "number": 1,
+    "url": "https://github.com/NoppakornZen/TuyDui/pull/1",
+    "state": "open",
+    "draft": true,
+    "merged": false,
+    "head": "ac5acda2038f1d7f0e9d17dc033318103b53363b",
+    "base": "feat/uxui-redesign"
+  },
+  "probe": {
+    "number": 2,
+    "url": "https://github.com/NoppakornZen/TuyDui/pull/2",
+    "state": "closed",
+    "merged": false,
+    "base": "integration/frontend-handoff-2026-11-01",
+    "sha": "88646dcb73f4ef6a73cd1d71c62341869f715bf7"
+  },
+  "ci": {
+    "id": 41313750090,
+    "url": "https://github.com/NoppakornZen/TuyDui/actions/runs/41313750090",
+    "status": "completed",
+    "conclusion": "success",
+    "sha": "88646dcb73f4ef6a73cd1d71c62341869f715bf7",
+    "jobs": [
+      {
+        "name": "contracts-and-build",
+        "status": "completed",
+        "conclusion": "success",
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Frontend-only scope gate",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm ci",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm run security:secrets",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm audit --omit=dev --audit-level=high",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm run check",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm test",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm run build",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npx playwright install --with-deps chromium",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run npm run test:e2e",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Run actions/upload-artifact@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/setup-node@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Post Run actions/checkout@v4",
+            "status": "completed",
+            "conclusion": "success"
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success"
+          }
+        ]
+      }
+    ]
+  }
+}

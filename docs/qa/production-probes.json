@@ -1,0 +1,26 @@
+[
+  {
+    "checkedAt": "2026-11-01T12:06:54.9551537Z",
+    "path": "/",
+    "status": 200,
+    "contentType": "text/html; charset=utf-8",
+    "json": false,
+    "title": "TuyDui"
+  },
+  {
+    "checkedAt": "2026-11-01T12:06:55.1290182Z",
+    "path": "/tutorial",
+    "status": 404,
+    "contentType": "text/html; charset=utf-8",
+    "json": false,
+    "title": "TuyDui"
+  },
+  {
+    "checkedAt": "2026-11-01T12:06:55.5068034Z",
+    "path": "/api/health",
+    "status": 404,
+    "contentType": "text/html; charset=utf-8",
+    "json": false,
+    "title": "TuyDui"
+  }
+]

@@ -1,0 +1,15 @@
+
+> tuydui@0.1.0 dev:frontend
+> npm run dev --workspace frontend
+
+
+> @tuydui/frontend@0.1.0 dev
+> next dev
+
+▲ Next.js 16.4.3 (Turbopack)
+- Local:         http://localhost:3101
+- Network:       http://26.197.147.136:3101
+✓ Ready in 605ms
+✓ Running next.config.mjs took 37ms
+
+✓ Generated AGENTS.md for AI agents. Set `agentRules: false` in next.config to disable.
