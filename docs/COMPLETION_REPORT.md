@@ -10,7 +10,7 @@ history merge, force push or history rewrite was performed.
 | Readiness | Verdict | Reason |
 | --- | --- | --- |
 | READY FOR FRONTEND REDESIGN | READY locally; team adoption required | Separate frontend/backend, documented contracts, recoverable server persistence and local workflow tests pass. Use the candidate branch below. |
-| READY FOR FRONTEND HANDOFF | BLOCKED | Hosted CI and real staging acceptance must pass; repository owner must adopt the branch and enforce review/protection rules. |
+| READY FOR FRONTEND HANDOFF | BLOCKED | Hosted CI passes; real staging acceptance and repository adoption/review/protection rules remain required. |
 | READY FOR PRODUCTION DEPLOYMENT | BLOCKED | Deployment provenance/configuration unverified, historical credentials require owner remediation, live integration untested, release approval absent. |
 
 Candidate canonical branch: `integration/frontend-handoff-2026-11-01`.
@@ -69,7 +69,8 @@ presented as evidence of live Supabase/Google/provider success.
 | Live quota concurrency / schema comparison | NOT TESTED | No authorized Supabase staging instance; local serialized engine is not multi-session lock evidence. |
 | Real AI, real storage, sharing/client review | NOT TESTED live | Local contracts/SQL coverage exists; deployed service behavior and full client-review acceptance need dedicated staging evidence. |
 | Docker image build | NOT TESTED | Docker unavailable. Backend Node build/start path verified by local tests. |
-| Hosted CI and branch protections | Pending publication / owner setup | Workflow YAML does not enable required checks or CODEOWNER rules automatically. See delivery update. |
+| Hosted CI | PASS | Both push and pull_request Integration checks passed at implementation commit `84f60f1`; [github-ci.json](qa/github-ci.json). Linux clean install, audit, secret guard, types, tests, builds and browser suite passed. Integration PR scope gate ran; frontend-only rejection policy is not a substitute for owner branch rules. |
+| Branch protections | BLOCKED / owner setup | Workflow YAML does not enable required checks or CODEOWNER rules automatically. |
 
 The final test/build round includes the quota persistence changes. Browser tests passed
 on the same frontend/backend application source; the later SQL-only changes were
@@ -120,5 +121,16 @@ Removal from a new commit does not revoke those credentials.
 
 ## Delivery update
 
-Implementation is prepared on the isolated integration branch. Publication status,
-commit SHA, draft PR and hosted CI results will be recorded after publication.
+- Published implementation commit: `84f60f1dc6cb8b9c1ab27dafdd01d3205755d8c5`.
+- Implementation commit changes 76 files (2,572 insertions, 637 deletions), including
+  evidence/screenshots. The subsequent documentation-only commit records publication
+  and hosted results; use `git log` for its final SHA.
+- Draft PR **#1**: `https://github.com/NoppakornZen/TuyDui/pull/1`, base
+  `feat/uxui-redesign`, head `integration/frontend-handoff-2026-11-01`.
+- Hosted Integration checks **PASS** for push run `41307925619` and pull_request
+  run `41308034555` at implementation SHA above. Evidence checked at
+  `2026-11-01T12:51:30Z`; [github-ci.json](qa/github-ci.json).
+- The branch was pushed normally. PR stays draft; no merge or production deployment.
+- `git diff --cached --check` passed before commit. QA log whitespace was normalized
+  for commit hygiene without changing test outcomes. Tracked implementation files
+  were clean after commit; existing `.claude/` remains untouched and untracked.
