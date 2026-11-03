@@ -4,6 +4,11 @@ Date: **2026-11-01**. This verifies existing integration work, not a redesign or
 new backend implementation. Application runtime code was not changed in this pass.
 A separate frontend-only PR probe changed only a CSS comment and was closed unmerged.
 
+**Re-verified 2026-11-03:** see [§7](#7-re-verification--2026-11-03). The candidate
+still passes install/typecheck/test/build/browser/audit gates, the earlier default-port
+failure was a local port conflict, and Vercel production provenance is now verified
+read-only. Readiness verdicts are unchanged.
+
 ## 1. Source verified
 
 | Item | Verified fact |
@@ -126,3 +131,63 @@ above first; no backend rewrite or forced-history merge is needed.
 
 Exact start/update/PR/rollback commands and environment/boundary guide:
 [FRONTEND_HANDOFF.md](FRONTEND_HANDOFF.md).
+
+## 7. Re-verification — 2026-11-03
+
+Purpose: confirm the candidate still passes and close the Vercel deployment-provenance
+question using read-only authenticated access. No application runtime code changed, and
+no deployment, database mutation, credential use or history rewrite was performed.
+Verification branch: `integration/frontend-handoff-2026-11-03`, created from
+`d410f37` in a separate worktree. Evidence: [qa/2026-11-03/](qa/2026-11-03/).
+
+| Check | Result | Method / evidence |
+| --- | --- | --- |
+| Remote state | UNCHANGED | Repository `pushed_at` 2026-11-01T19:09:11Z; `main` `796852d`, candidate `d410f37`; no newer commits. [github-verification.json](qa/2026-11-03/github-verification.json) |
+| Draft PR #1 | OPEN, draft, mergeable `clean` | `integration/frontend-handoff-2026-11-01` → `feat/uxui-redesign`; not merged. Same evidence file. |
+| Hosted CI at candidate | PASS | “Integration checks” success at `d410f37`: runs `41317762230` (push) and `41317758512` (PR). Same evidence file. |
+| Clean-worktree install | PASS | New worktree from `d410f37`; `npm ci` added 45 packages, 0 vulnerabilities; Node 24.16.0/npm 11.13.0 on Windows. |
+| Typecheck | PASS | `npm run check` exit 0 (Next typegen + tsc, frontend and backend). [typecheck.txt](qa/2026-11-03/typecheck.txt) |
+| Unit/contract/integration scripts | PASS | 11 backend + 7 frontend + 1 cross-workspace = **19 tests**, plus project-flow QA script; zero failures. [tests.txt](qa/2026-11-03/tests.txt) |
+| Builds | PASS | Next 16.4.3 frontend and backend TypeScript build exit 0 with fixture env. [build.txt](qa/2026-11-03/build.txt). Not deployable as-is. |
+| Browser suite | PASS | 5 Playwright tests (1440/768/390 public routes, proxy JSON, full mocked workflow), 0 failures. [browser-tests.txt](qa/2026-11-03/browser-tests.txt) |
+| Production dependency audit | PASS | `npm audit --omit=dev`: 0 vulnerabilities. [dependency-audit.json](qa/2026-11-03/dependency-audit.json) |
+| Tracked-secret guard | PASS | 216 tracked paths. [secrets-check.txt](qa/2026-11-03/secrets-check.txt). Pattern guard only; not history scanning or rotation proof. |
+| Default-port dev start | PASS | Backend `4000/api/health` JSON; frontend `3000/login` 200; proxied `3000/api/health` JSON; `3000/tutorial` 200. [dev-default-ports.txt](qa/2026-11-03/dev-default-ports.txt) |
+| Production public probes | FAIL (unchanged) | `/`, `/login`, `/projects` 200 HTML; `/tutorial` 404 HTML; `/api/health` 404 HTML at 2026-11-03T15:26Z. [production-probes.json](qa/2026-11-03/production-probes.json) |
+| Vercel deployment provenance | VERIFIED (read-only) | See below. [vercel-deployment.json](qa/2026-11-03/vercel-deployment.json), [vercel-env-names.txt](qa/2026-11-03/vercel-env-names.txt) |
+| Live staging / Google OAuth / real provider / rotation | BLOCKED / NOT TESTED | Unchanged owner gates; no approved staging or credentials were used. |
+
+The 2026-11-01 default-port FAIL is resolved as an environment artifact: this machine
+had an unrelated Vite application answering on port 3000. With the port free, the
+documented default commands pass. It was not an application routing defect.
+
+### Verified Vercel facts
+
+- Project `tuydui`, team `zens-projects-26707d96`; framework Next.js; Node 24.x;
+  **Root Directory unset (project root `.`)**; project-level Git link `null`.
+- Latest production deployment `dpl_3Kq7F4DUT1Pp2s91jBdYp5Ge33rt`, created
+  **2026-10-11T09:12:25Z**, aliased `https://tuydui.vercel.app`. Deployment metadata
+  records **GitHub `main@e456eef10ac1694f221fdd1387b4a3446a5a8ac2`** (2026-10-04,
+  “แก้ไขหน้า Project…”) with `gitDirty=1`.
+- `e456eef` contains neither `app/tutorial/page.tsx` nor `app/api/health/route.ts`
+  (verified with `git cat-file`), which explains both public 404s. Production predates
+  `3cf5f38` (2026-10-21) and the split candidate. Because the deployment was built
+  from a dirty tree, the deployed source is not reproducible from that commit alone.
+- Production environment variable **names** (values never read or printed) include the
+  Supabase public URL/anon key, `SUPABASE_SERVICE_ROLE_KEY`, `POSTGRES_*` and `AI_*`.
+  **No `BACKEND_URL` and no `NEXT_PUBLIC_APP_URL` are configured.** The split Next
+  config fails closed on Vercel without `BACKEND_URL`, so the split app has never
+  been deployed to this project.
+
+Implication: production remains the older monolith at `tuydui.vercel.app`. A split
+cutover still needs owner-approved staging, configuration and release. Nothing above
+authorizes or performs a production deployment.
+
+### Readiness after re-verification
+
+The three readiness decisions in §6 are unchanged: **A. frontend development** is
+possible on the candidate but blocked for complete real authenticated development by
+canonical adoption and approved staging config; **B. frontend handoff** is blocked for
+completion by adoption/protection and live staging acceptance; **C. production** is
+blocked by history exposure, stale/unverified split deployment and absent release
+approval. A green build is not production readiness.

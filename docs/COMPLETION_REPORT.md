@@ -2,6 +2,7 @@
 
 Later verification: [QA_REPORT.md](QA_REPORT.md) records a new remote clone,
 frontend-only PR CI, current source/deployment facts and final readiness gates.
+Its §7 records the 2026-11-03 re-verification and read-only Vercel provenance check.
 Use it for current readiness; this report retains implementation provenance.
 
 ## Delivery and verdict

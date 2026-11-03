@@ -1,0 +1,30 @@
+{
+  "checkedAt": "2026-11-03T15:26:48.827Z",
+  "project": {
+    "name": "tuydui",
+    "rootDirectory": null,
+    "framework": "nextjs",
+    "nodeVersion": "24.x",
+    "gitLink": null
+  },
+  "productionDeployment": {
+    "id": "dpl_3Kq7F4DUT1Pp2s91jBdYp5Ge33rt",
+    "url": "tuydui-hslfwmmru-zens-projects-26707d96.vercel.app",
+    "readyState": "READY",
+    "target": "production",
+    "createdAt": "2026-10-11T09:12:25.404Z",
+    "readyAt": "2026-10-11T09:12:43.653Z",
+    "alias": [
+      "tuydui.vercel.app",
+      "tuydui-zens-projects-26707d96.vercel.app"
+    ],
+    "git": {
+      "repo": "TuyDui",
+      "org": "NoppakornZen",
+      "ref": "main",
+      "sha": "e456eef10ac1694f221fdd1387b4a3446a5a8ac2",
+      "message": "เเก้ไขหน้า Project ให้มันเชื่อมกับหน้า Profile",
+      "dirty": "1"
+    }
+  }
+}

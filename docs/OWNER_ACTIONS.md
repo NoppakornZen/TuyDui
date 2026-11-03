@@ -2,11 +2,15 @@
 
 No secret values appear in this report. Local credentials of unknown provenance and
 historically exposed keys were not used to contact or mutate the production database.
+On 2026-11-03 the Vercel project, latest production deployment metadata and production
+environment variable **names** were inspected read-only through the authenticated CLI/API.
+No values were read or printed and no project setting was changed; evidence is in
+[qa/2026-11-03/](qa/2026-11-03/).
 
 | Owner | Where / action | Verification | Impact if not done |
 | --- | --- | --- | --- |
 | Repository owner | Review/adopt candidate split branch; set default/target branch and CODEOWNER/required-check/no-direct-push rules in GitHub Settings → Rules | A frontend-only PR is blocked for protected files; required Integration checks and owner review are enforced | YAML alone cannot enforce the team workflow |
-| Vercel owner | Project settings and latest production Deployment: record exact branch/SHA/root directory/env names and backend/proxy settings | Read deployment metadata in authenticated dashboard; compare to Git SHA | Current deployment provenance remains unknown |
+| Vercel/deployment owner | Provenance verified read-only on 2026-11-03: Root Directory `.`, no project Git link, latest production `dpl_3Kq7F4DUT1Pp2s91jBdYp5Ge33rt` built 2026-10-11 from dirty `main@e456eef`, no `BACKEND_URL`/`NEXT_PUBLIC_APP_URL` configured. Remaining: decide CLI vs Git deployment, adopt the split branch, set Root Directory `frontend/`, configure public env and HTTPS `BACKEND_URL`, and deploy only with approval | Read deployment metadata and env names in authenticated Vercel; confirm a split deployment serves backend JSON at `/api/health` and `/tutorial` 200; record branch/SHA/root | Production stays on the stale monolith and the split cannot be released |
 | Supabase / platform owner | Provision isolated staging project, compare schema, back up, apply 001–008 as appropriate; provision private PDF bucket and dedicated accounts | Migration ledger plus read/write RLS and RPC checks from runbook | New APIs intentionally fail closed when migrations/config are absent |
 | Backend owner | Choose approved Node/Docker hosting and deploy reviewed staging image; set URL/public anon key/provider runtime vars in its secret manager | Backend `/api/health` JSON plus authenticated workspace/AI/PDF tests | Frontend cannot use a real backend |
 | Frontend/Vercel owner | Separate staging deployment, Root Directory `frontend/`, root-lockfile install, staging `BACKEND_URL` before build and public Supabase vars | Proxy health matches backend JSON; tutorial/login/projects/workspace load | Current production still has missing tutorial/backend routes |

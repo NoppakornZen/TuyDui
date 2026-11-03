@@ -1,0 +1,31 @@
+{
+  "checkedAt": "2026-11-03T15:26:36.386Z",
+  "base": "https://tuydui.vercel.app",
+  "results": {
+    "/": {
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "bodyPrefix": "<!DOCTYPE html><html lang=\"en\"><head><meta charSet=\"utf-8\"/>"
+    },
+    "/login": {
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "bodyPrefix": "<!DOCTYPE html><html lang=\"en\"><head><meta charSet=\"utf-8\"/>"
+    },
+    "/projects": {
+      "status": 200,
+      "contentType": "text/html; charset=utf-8",
+      "bodyPrefix": "<!DOCTYPE html><html lang=\"en\"><head><meta charSet=\"utf-8\"/>"
+    },
+    "/tutorial": {
+      "status": 404,
+      "contentType": "text/html; charset=utf-8",
+      "bodyPrefix": "<!DOCTYPE html><html lang=\"en\"><head><meta charSet=\"utf-8\"/>"
+    },
+    "/api/health": {
+      "status": 404,
+      "contentType": "text/html; charset=utf-8",
+      "bodyPrefix": "<!DOCTYPE html><html lang=\"en\"><head><meta charSet=\"utf-8\"/>"
+    }
+  }
+}

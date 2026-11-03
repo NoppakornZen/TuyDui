@@ -1,0 +1,25 @@
+Vercel CLI 50.9.6
+Retrieving project…
+> Environment Variables found for zens-projects-26707d96/tuydui [259ms]
+
+ name                               value               environments                created
+ SUPABASE_SERVICE_ROLE_KEY          Encrypted           Production                  31d ago
+ NEXT_PUBLIC_SUPABASE_ANON_KEY      Encrypted           Production                  31d ago
+ NEXT_PUBLIC_SUPABASE_URL           Encrypted           Production                  31d ago
+ POSTGRES_HOST                      Encrypted           Preview, Production         31d ago
+ POSTGRES_URL                       Encrypted           Preview, Production         31d ago
+ POSTGRES_PRISMA_URL                Encrypted           Preview, Production         31d ago
+ POSTGRES_URL_NON_POOLING           Encrypted           Preview, Production         31d ago
+ POSTGRES_DATABASE                  Encrypted           Preview, Production         31d ago
+ POSTGRES_PASSWORD                  Encrypted           Preview, Production         31d ago
+ POSTGRES_USER                      Encrypted           Preview, Production         31d ago
+ AI_MODEL                           Encrypted           Production                  32d ago
+ AI_PROVIDER                        Encrypted           Production                  32d ago
+ MAXPLUSAI_API_KEY                  Encrypted           Production                  32d ago
+ MAXPLUSAI_POOL                     Encrypted           Production                  32d ago
+ MAXPLUSAI_BASE_URL                 Encrypted           Production                  32d ago
+
+Common next commands:
+- `vercel env add`
+- `vercel env rm`
+- `vercel env pull`
