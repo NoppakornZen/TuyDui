@@ -1,0 +1,7 @@
+checked_at=2026-11-03T15:26:59.2607909Z
+node=v24.16.0 npm=11.13.0
+backend_4000_status=200 body={"status":"ok","service":"tuydui-backend"}
+frontend_3000_login_status=200 ctype=text/html; charset=utf-8
+proxy_3000_api_health_status=200 body={"status":"ok","service":"tuydui-backend"}
+tutorial_3000_status=200 ctype=text/html; charset=utf-8
+dev processes stopped

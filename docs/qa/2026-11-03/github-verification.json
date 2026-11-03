@@ -1,0 +1,99 @@
+{
+  "checkedAt": "2026-11-03T15:26:39.309Z",
+  "repo": {
+    "full_name": "NoppakornZen/TuyDui",
+    "default_branch": "main",
+    "pushed_at": "2026-11-01T19:09:11Z"
+  },
+  "pr1": {
+    "number": 1,
+    "state": "open",
+    "draft": true,
+    "merged": false,
+    "mergeable": true,
+    "mergeable_state": "clean",
+    "head": {
+      "ref": "integration/frontend-handoff-2026-11-01",
+      "sha": "d410f376c4285b4ea2a2bf57dc316dfc1fe53838"
+    },
+    "base": {
+      "ref": "feat/uxui-redesign",
+      "sha": "50c5e85684750a1c94a7ab1140703108c26891ef"
+    },
+    "updated_at": "2026-11-01T14:52:20Z",
+    "html_url": "https://github.com/NoppakornZen/TuyDui/pull/1"
+  },
+  "runs": [
+    {
+      "name": "Integration checks",
+      "head_branch": "integration/frontend-handoff-2026-11-01",
+      "head_sha": "d410f376c4285b4ea2a2bf57dc316dfc1fe53838",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-01T14:45:30Z",
+      "html_url": "https://github.com/NoppakornZen/TuyDui/actions/runs/41317762230"
+    },
+    {
+      "name": "Integration checks",
+      "head_branch": "integration/frontend-handoff-2026-11-01",
+      "head_sha": "d410f376c4285b4ea2a2bf57dc316dfc1fe53838",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-01T14:45:28Z",
+      "html_url": "https://github.com/NoppakornZen/TuyDui/actions/runs/41317758512"
+    },
+    {
+      "name": "Integration checks",
+      "head_branch": "integration/frontend-handoff-2026-11-01",
+      "head_sha": "ac5acda2038f1d7f0e9d17dc033318103b53363b",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-01T12:55:47Z",
+      "html_url": "https://github.com/NoppakornZen/TuyDui/actions/runs/41308788543"
+    },
+    {
+      "name": "Integration checks",
+      "head_branch": "integration/frontend-handoff-2026-11-01",
+      "head_sha": "ac5acda2038f1d7f0e9d17dc033318103b53363b",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-01T12:55:44Z",
+      "html_url": "https://github.com/NoppakornZen/TuyDui/actions/runs/41308784814"
+    },
+    {
+      "name": "Integration checks",
+      "head_branch": "integration/frontend-handoff-2026-11-01",
+      "head_sha": "84f60f1dc6cb8b9c1ab27dafdd01d3205755d8c5",
+      "status": "completed",
+      "conclusion": "success",
+      "created_at": "2026-11-01T12:45:59Z",
+      "html_url": "https://github.com/NoppakornZen/TuyDui/actions/runs/41308034555"
+    }
+  ],
+  "branches": [
+    {
+      "name": "develop",
+      "sha": "d410f376c4285b4ea2a2bf57dc316dfc1fe53838"
+    },
+    {
+      "name": "feat/uxui-redesign",
+      "sha": "50c5e85684750a1c94a7ab1140703108c26891ef"
+    },
+    {
+      "name": "frontend/handoff-verification-2026-11-01",
+      "sha": "88646dcb73f4ef6a73cd1d71c62341869f715bf7"
+    },
+    {
+      "name": "integration/frontend-handoff-2026-11-01",
+      "sha": "d410f376c4285b4ea2a2bf57dc316dfc1fe53838"
+    },
+    {
+      "name": "main",
+      "sha": "796852d95cfea7bfca452ca9952508538f122358"
+    },
+    {
+      "name": "redesign-v2",
+      "sha": "3e4329bb187a8d5cddba1176515b127496ccee1b"
+    }
+  ]
+}

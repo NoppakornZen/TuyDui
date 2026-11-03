@@ -1,6 +1,6 @@
 # TuyDui — Frontend Redesign V3 handoff
 
-Verified 2026-11-01. Read [QA_REPORT.md](QA_REPORT.md) for evidence and gates.
+Verified 2026-11-01; re-verified 2026-11-03. Read [QA_REPORT.md](QA_REPORT.md) for evidence and gates.
 Clean-clone QA and a real frontend-only PR passed. Approved staging configuration,
 team adoption and live acceptance remain missing; fixture success is not live acceptance.
 
@@ -69,20 +69,23 @@ Unused admin/billing/other-provider examples are not required or implemented fea
 # Terminal 1: approved backend env; reviewed migrations applied to staging first
 npm run dev:backend
 # Terminal 2: frontend BACKEND_URL=http://127.0.0.1:4000
-PORT=3101 npm run dev:frontend
+npm run dev:frontend
 ```
 
 Backend: `http://127.0.0.1:4000`; frontend default: `http://localhost:3000`.
-Explicit **3101** passed the dev-start drill because this test machine returned
-unrelated Vite HTML at port 3000. Exact local routing cause is unverified; unrelated
-services were not killed. Align APP_URL and approved OAuth allowlists with your port.
-With an approved HTTPS staging BACKEND_URL, start only the frontend. Keep API calls
-same-origin `/api/*`; no backend origin hardcoding in browser code. Rebuild after
-changing proxy/public build variables.
+The default ports were re-verified PASS on 2026-11-03
+([evidence](qa/2026-11-03/dev-default-ports.txt)): backend health JSON, proxied
+`/api/health` JSON and `/tutorial` all answered on 3000. On 2026-11-01 the same
+drill failed only because an unrelated Vite application was answering on port 3000;
+that was a local port conflict, not an application defect. If port 3000 is occupied,
+run with `PORT=3101 npm run dev:frontend` and align APP_URL and approved OAuth
+allowlists with the chosen port. With an approved HTTPS staging BACKEND_URL, start
+only the frontend. Keep API calls same-origin `/api/*`; no backend origin hardcoding
+in browser code. Rebuild after changing proxy/public build variables.
 
 ```sh
 curl -fsS http://127.0.0.1:4000/api/health
-curl -fsS http://127.0.0.1:3101/api/health
+curl -fsS http://127.0.0.1:3000/api/health   # use your chosen frontend port
 # Both must return JSON: {"status":"ok","service":"tuydui-backend"}
 ```
 

@@ -2,15 +2,32 @@
 
 No deployment or production database mutation is performed by this preparation.
 
-## Confirm current production (owner)
+## Confirm current production (verified read-only 2026-11-03)
 
-Vercel project: `tuydui` (local project metadata is only a hint). In Vercel →
-Project → Settings/Git/Build and Development/Environment Variables and Deployments:
-record production branch, exact deployed SHA, Root Directory, build/install commands,
-domains and environment variable **names**. Do not infer deployed SHA from GitHub HEAD.
-On 2026-11-01 public probes returned `/` 200 HTML, `/tutorial` 404 HTML,
-`/api/health` 404 HTML. These probes do not establish which commit is deployed.
-Backend hosting, public URL, configured BACKEND_URL and OAuth allowlist are unverified.
+Authenticated Vercel CLI/API inspection (no values printed, no settings changed)
+established:
+
+- Project `tuydui`, team `zens-projects-26707d96`; framework Next.js; Node 24.x;
+  **Root Directory unset (project root `.`)**; project-level Git link `null`.
+- Latest production deployment `dpl_3Kq7F4DUT1Pp2s91jBdYp5Ge33rt`, created
+  **2026-10-11T09:12:25Z**, aliased `https://tuydui.vercel.app`.
+- That deployment's metadata records GitHub `main@e456eef10ac1694f221fdd1387b4a3446a5a8ac2`
+  (2026-10-04) with `gitDirty=1`. The commit has no tutorial or health route, matching
+  the public 404s.
+- Production environment variable names include Supabase public config,
+  `SUPABASE_SERVICE_ROLE_KEY`, `POSTGRES_*` and `AI_*`; there is **no `BACKEND_URL`**
+  and no `NEXT_PUBLIC_APP_URL`.
+- Public probes on 2026-11-03: `/`, `/login`, `/projects` 200 HTML; `/tutorial` 404
+  HTML; `/api/health` 404 HTML. Evidence:
+  [qa/2026-11-03/vercel-deployment.json](qa/2026-11-03/vercel-deployment.json),
+  [qa/2026-11-03/production-probes.json](qa/2026-11-03/production-probes.json).
+
+Production is therefore the older monolith, older than `3cf5f38` and the split
+candidate; the split has not been deployed. The deployed tree was dirty, so it is not
+fully reproducible from `e456eef` alone. The owner must still decide whether to keep
+CLI deployments or connect Git, and must supply approved staging/production
+configuration. Backend hosting, public URL, OAuth allowlist and release approval
+remain unverified/unset. Do not infer deployed state from GitHub HEAD.
 
 ## Staging setup
 
